@@ -32,13 +32,7 @@ SUPPORTED_LANGUAGES = {"english", "hindi", "bengali", "en", "hi", "bn"}
 #
 from ai_module.language_detector import detect_language
 # ─────────────────────────────────────────────────────────────────────────────
-from fastapi import FastAPI
 
-app = FastAPI()
-
-@app.get("/")
-def home():
-    return {"message": "Backend is running successfully"}
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -70,6 +64,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MindVarta API", lifespan=lifespan)
+@app.get("/")
+async def home():
+    return {"message": "Backend is running successfully"}
 
 # In development allow all localhost origins dynamically
 def is_allowed_origin(origin: str) -> bool:
