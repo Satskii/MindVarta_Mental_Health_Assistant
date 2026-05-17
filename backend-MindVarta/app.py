@@ -81,6 +81,7 @@ app.add_middleware(
         "http://localhost:4173",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://mindvarta-mental-health-assistant-2.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -158,63 +159,111 @@ def verify_conversation_ownership(conv_id: str, user_id: str) -> dict:
 
 @app.post("/auth/signup")
 async def signup(body: SignUpRequest, request: Request, response: Response):
+
+    # Normalize email
+    email = body.email.strip().lower()
+
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Name is required")
+
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
-    existing = db.get_user_by_email(body.email)
+    existing = db.get_user_by_email(email)
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
     pw_hash = hash_password(body.password)
-    user = db.create_user(body.name.strip(), body.email, pw_hash)
+
+    # Store lowercase email
+    user = db.create_user(body.name.strip(), email, pw_hash)
 
     token = generate_token()
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent", "")[:255]
+
     sid = db.create_auth_session(user["id"], token, "english", ip, ua)
 
     response.set_cookie(
-        key=COOKIE_NAME, value=token,
-        httponly=True, samesite="lax",
-        max_age=COOKIE_MAX_AGE, secure=False,  # set secure=True in production
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="none",
+        max_age=COOKIE_MAX_AGE,
+        secure=True,
     )
-    return {"message": "Account created", "user": {"id": user["id"], "name": user["name"], "email": user["email"]}}
+
+    return {
+        "message": "Account created",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
+    }
 
 
 @app.post("/auth/signin")
 async def signin(body: SignInRequest, request: Request, response: Response):
-    user = db.get_user_by_email(body.email)
+
+    # Normalize email
+    email = body.email.strip().lower()
+
+    user = db.get_user_by_email(email)
+
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = generate_token()
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent", "")[:255]
+
     db.create_auth_session(user["id"], token, "english", ip, ua)
 
     response.set_cookie(
-        key=COOKIE_NAME, value=token,
-        httponly=True, samesite="lax",
-        max_age=COOKIE_MAX_AGE, secure=False,
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=COOKIE_MAX_AGE,
+        secure=False,
     )
-    return {"message": "Signed in", "user": {"id": user["id"], "name": user["name"], "email": user["email"]}}
+
+    return {
+        "message": "Signed in",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
+    }
 
 
 @app.post("/auth/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest):
+
+    # Normalize email
+    email = body.email.strip().lower()
+
+    user = db.get_user_by_email(email)
+
     # Always return 200 to avoid email enumeration
-    user = db.get_user_by_email(body.email.strip().lower())
     if user:
         token = generate_token()
         db.create_reset_token(user["id"], token)
+
         try:
             send_reset_email(user["email"], token, user["name"])
         except Exception as e:
             print(f"[EMAIL ERROR] {e}")
-            raise HTTPException(status_code=500, detail="Failed to send reset email. Check SMTP settings.")
-    return {"message": "If that email is registered, a reset link has been sent."}
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send reset email. Check SMTP settings."
+            )
+
+    return {
+        "message": "If that email is registered, a reset link has been sent."
+    }
 
 
 @app.post("/auth/reset-password")
@@ -464,4 +513,8 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(
+    app,
+    host="0.0.0.0",
+    port=int(os.environ.get("PORT", 10000))
+)
