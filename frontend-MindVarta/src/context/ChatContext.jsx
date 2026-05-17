@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 
 const ChatContext = createContext()
-const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = import.meta.env.VITE_API_URL
 
 const WELCOME_MESSAGES = {
   english: "Hello! I'm here to provide support for your mental health concerns. How are you feeling today?",
