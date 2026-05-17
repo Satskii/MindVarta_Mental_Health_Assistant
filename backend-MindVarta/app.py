@@ -32,6 +32,13 @@ SUPPORTED_LANGUAGES = {"english", "hindi", "bengali", "en", "hi", "bn"}
 #
 from ai_module.language_detector import detect_language
 # ─────────────────────────────────────────────────────────────────────────────
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def home():
+    return {"message": "Backend is running successfully"}
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
