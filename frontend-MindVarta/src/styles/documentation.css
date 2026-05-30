@@ -674,6 +674,22 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .doc-container {
+    grid-template-columns: 220px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .doc-header h1 {
+    font-size: 2rem;
+  }
+
+  .doc-section h2 {
+    font-size: 1.6rem;
+  }
+}
+
 @media (max-width: 768px) {
   .documentation-page {
     height: auto;
@@ -685,20 +701,26 @@
     gap: 1.5rem;
     overflow: visible;
     height: auto;
-    padding: 1.5rem;
+    padding: 1.5rem 1rem;
   }
 
   .doc-sidebar {
     position: static;
     margin-bottom: 2rem;
-  }
-
-  .doc-header h1 {
-    font-size: 1.8rem;
+    max-height: 400px;
   }
 
   .doc-header {
     padding: 2rem 1rem;
+  }
+
+  .doc-header h1 {
+    font-size: 1.8rem;
+    margin-top: 0.75rem;
+  }
+
+  .doc-header p {
+    font-size: 1rem;
   }
 
   .doc-back-btn {
@@ -707,14 +729,43 @@
     left: 1rem;
     padding: 0.6rem 1rem;
     font-size: 0.85rem;
+    z-index: 99;
+  }
+
+  .doc-content {
+    padding-right: 0;
+  }
+
+  .doc-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .doc-section h2 {
+    font-size: 1.4rem;
+  }
+
+  .doc-section h3 {
+    font-size: 1.1rem;
+  }
+
+  .doc-section p {
+    font-size: 0.9rem;
   }
 
   .arch-diagram {
     flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .arch-box {
+    min-width: 140px;
+    flex: 1;
+    padding: 1rem;
   }
 
   .arch-arrow {
     transform: rotate(90deg);
+    margin: -0.5rem 0;
   }
 
   .pipeline {
@@ -727,26 +778,282 @@
 
   .feature-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .feature-item {
+    padding: 1.2rem;
+  }
+
+  .feature-icon {
+    font-size: 2rem;
+    margin-bottom: 0.6rem;
   }
 
   .modules-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .components-list {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .stack-columns {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .stack-column h4 {
+    margin-bottom: 0.6rem;
+    font-size: 0.95rem;
   }
 
   .security-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .code-structure {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .toc-link {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .toc-link:hover {
+    padding-left: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .doc-container {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
+
+  .doc-header {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .doc-header h1 {
+    font-size: 1.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .doc-header p {
+    font-size: 0.85rem;
+  }
+
+  .doc-back-btn {
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .doc-sidebar {
+    margin-bottom: 1.5rem;
+    max-height: 300px;
+    padding: 1rem;
+  }
+
+  .doc-sidebar h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .toc-link {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .doc-content {
+    padding-right: 0;
+  }
+
+  .doc-section {
+    margin-bottom: 2rem;
+  }
+
+  .doc-section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .doc-section h3 {
+    font-size: 0.95rem;
+    margin: 1rem 0 0.6rem 0;
+  }
+
+  .doc-section h4 {
+    font-size: 0.9rem;
+    margin: 0.8rem 0 0.4rem 0;
+  }
+
+  .doc-section p {
+    font-size: 0.8rem;
+    margin-bottom: 0.6rem;
+    line-height: 1.5;
+  }
+
+  .doc-section ul,
+  .doc-section ol {
+    margin: 0.8rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .doc-section li {
+    margin: 0.4rem 0;
+    line-height: 1.5;
+    font-size: 0.8rem;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .feature-item {
+    padding: 1rem 0.8rem;
+    border-radius: 8px;
+  }
+
+  .feature-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-item h4 {
+    font-size: 0.85rem;
+    margin: 0.4rem 0;
+  }
+
+  .feature-item p {
+    font-size: 0.75rem;
+  }
+
+  .modules-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .components-list {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .arch-diagram {
+    gap: 0.6rem;
+  }
+
+  .arch-box {
+    min-width: 100%;
+    padding: 0.9rem;
+    border-radius: 6px;
+  }
+
+  .arch-box h4 {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .arch-box p {
+    font-size: 0.8rem;
+  }
+
+  .arch-arrow {
+    margin: -0.3rem 0;
+    font-size: 1.2rem;
+  }
+
+  .stack-columns {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stack-column h4 {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stack-column li {
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+  }
+
+  .security-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .code-structure {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .tech-stack {
+    padding: 1.2rem;
+    margin: 1.2rem 0;
+  }
+
+  .pipeline {
+    gap: 0.8rem;
+  }
+
+  .pipeline-step {
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .doc-container {
+    padding: 0.75rem;
+  }
+
+  .doc-header {
+    padding: 1.2rem 0.5rem;
+  }
+
+  .doc-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .doc-header p {
+    font-size: 0.8rem;
+  }
+
+  .doc-back-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.7rem;
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+
+  .doc-section h2 {
+    font-size: 1rem;
+  }
+
+  .doc-section h3 {
+    font-size: 0.9rem;
+  }
+
+  .doc-section p {
+    font-size: 0.75rem;
+  }
+
+  .feature-item {
+    padding: 0.8rem;
+  }
+
+  .feature-icon {
+    font-size: 1.5rem;
   }
 }
 

@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowLeft, faBars, faChevronDown, faVolumeMute, faVolumeUp, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useChat } from '../../context/ChatContext'
 import MindVartaLogo from '../../assets/MindVarta_Logo.png'
 
@@ -36,29 +38,21 @@ export default function ChatHeader({ onToggleSidebar, muted, voiceModeEnabled, o
             aria-label="Back to current chat"
             title="Back to current chat"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
+            <FontAwesomeIcon icon={faArrowLeft} />
             Back
           </button>
         )}
         
         {/* Sidebar toggle */}
         <button className="sidebar-toggle" onClick={onToggleSidebar} aria-label="Toggle sidebar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-          </svg>
+          <FontAwesomeIcon icon={faBars} />
         </button>
 
         {/* Language selector */}
         <div className="language-selector" ref={dropdownRef} onClick={() => setOpen(o => !o)}>
           <span style={{ fontSize: '1.1rem' }}>{activeLang.flag}</span>
           <span>{activeLang.label}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <FontAwesomeIcon icon={faChevronDown} style={{ marginLeft: 6, fontSize: '0.75rem' }} />
 
           {open && (
             <div className="language-dropdown">
@@ -86,7 +80,13 @@ export default function ChatHeader({ onToggleSidebar, muted, voiceModeEnabled, o
           title={!voiceModeEnabled ? 'Enable voice mode in settings' : muted ? 'Unmute responses' : 'Mute responses'}
           disabled={!voiceModeEnabled}
         >
-          {!voiceModeEnabled ? '🎙️' : muted ? '🔇' : '🔊'}
+          {!voiceModeEnabled ? (
+            <FontAwesomeIcon icon={faMicrophone} />
+          ) : muted ? (
+            <FontAwesomeIcon icon={faVolumeMute} />
+          ) : (
+            <FontAwesomeIcon icon={faVolumeUp} />
+          )}
         </button>
 
         {/* Logo */}

@@ -28,6 +28,8 @@ def extract_response_and_summary(raw_text: str) -> tuple:
       1. Valid JSON
       2. Markdown-wrapped JSON (```json ... ```)
       3. Partial / broken model outputs via regex fallback
+      4. Multi-language responses (Bengali, Hindi, English, etc.)
+      5. Text before/after JSON (cleans it up)
     """
 
     cleaned = raw_text.strip()
@@ -54,29 +56,89 @@ def extract_response_and_summary(raw_text: str) -> tuple:
     except Exception:
         pass
 
-    # Regex fallback
-    actual_match = re.search(
-        r'"actual_response"\s*:\s*"(.+?)"\s*,',
-        cleaned,
-        re.DOTALL
-    )
+    # If JSON parse failed, try to extract JSON from within the text
+    # Look for JSON object pattern
+    json_match = re.search(r'\{[^{}]*"actual_response"[^{}]*\}', cleaned, re.DOTALL)
+    if json_match:
+        try:
+            parsed = json.loads(json_match.group(0))
+            actual_response = parsed.get("actual_response", "").strip()
+            summarize_context = parsed.get("summarize_context", "").strip()
+            if actual_response:
+                if not summarize_context:
+                    summarize_context = generate_fallback_summary(actual_response)
+                return actual_response, summarize_context
+        except Exception:
+            pass
+
+    # Regex fallback - handle both quoted and unquoted values
+    # Try different regex patterns to extract actual_response
+    patterns = [
+        r'"actual_response"\s*:\s*"((?:\\.|[^"\\])*?)"\s*(?:,|\})',  # Standard with comma or closing brace
+        r'"actual_response"\s*:\s*"((?:\\.|[^"\\])*?)"',              # Without comma/brace
+    ]
+    
+    actual_response = None
+    for pattern in patterns:
+        actual_match = re.search(pattern, cleaned, re.DOTALL)
+        if actual_match:
+            actual_response = actual_match.group(1).strip()
+            break
+    
+    # If still no match, look for the response between "actual_response": and "summarize_context" or }
+    if not actual_response:
+        match = re.search(
+            r'"actual_response"\s*:\s*["\']([^"\']*)["\'][,\s}]',
+            cleaned,
+            re.DOTALL
+        )
+        if match:
+            actual_response = match.group(1).strip()
+    
     summary_match = re.search(
-        r'"summarize_context"\s*:\s*"(.+?)"',
+        r'"summarize_context"\s*:\s*"((?:\\.|[^"\\])*?)"',
         cleaned,
         re.DOTALL
     )
 
-    actual_response = (
-        actual_match.group(1).strip()
-        if actual_match
-        else cleaned.strip()
-    )
+    if actual_response:
+        # Unescape JSON-encoded characters
+        actual_response = actual_response.replace('\\n', '\n')
+        actual_response = actual_response.replace('\\\"', '"')
+        actual_response = actual_response.replace('\\"', '"')
+        actual_response = actual_response.replace('\\\\', '\\')
+    else:
+        # If regex extraction also fails, try to find content before any JSON-like structure
+        # Remove anything that looks like JSON metadata from the response
+        actual_response = re.sub(
+            r'[{}\[\]"\':]|\s*,\s*|actual_response|summarize_context',
+            '',
+            cleaned
+        ).strip()
+        
+        # If that resulted in empty or very short string, try a different approach
+        if len(actual_response) < 10:
+            # Look for the first substantial text block
+            lines = cleaned.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('{') and not line.startswith('"') and len(line) > 5:
+                    actual_response = line
+                    break
+            
+            # If still empty, use whatever is left
+            if not actual_response:
+                actual_response = cleaned.strip()
 
-    summarize_context = (
-        summary_match.group(1).strip()
-        if summary_match
-        else generate_fallback_summary(actual_response)
-    )
+    summarize_context = ""
+    if summary_match:
+        summarize_context = summary_match.group(1).strip()
+        # Unescape as well
+        summarize_context = summarize_context.replace('\\n', '\n')
+        summarize_context = summarize_context.replace('\\\"', '"')
+    
+    if not summarize_context:
+        summarize_context = generate_fallback_summary(actual_response)
 
     return actual_response, summarize_context
 
@@ -236,4 +298,6 @@ def generate_response(
     return {
         "actual_response":   actual_response,
         "summarize_context": summarize_context,
+        "crisis_detected": possible_crisis,
+        "crisis_level": crisis_level,
     }

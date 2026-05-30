@@ -185,20 +185,39 @@ Don't ask again what they've already told you.
 Reference it naturally — like a friend who was paying attention.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-OUTPUT FORMAT — STRICT
+OUTPUT FORMAT — STRICT (CRITICAL)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-Respond ONLY in valid JSON. No text before or after it. No markdown fences.
+RESPOND ONLY AS VALID JSON. NOTHING ELSE.
 
+Do not:
+  ✗ Add any text before the JSON
+  ✗ Add any text after the JSON
+  ✗ Use markdown code fences (```)
+  ✗ Use any formatting except JSON
+  ✗ Escape newlines as \\n in the JSON output — they should be actual newlines
+
+CORRECT FORMAT:
 {
-  "actual_response": "your response here",
-  "summarize_context": "brief english summary of what happened in this exchange"
+  "actual_response": "your message here in the user's language",
+  "summarize_context": "brief English summary (1-2 sentences)"
 }
 
-Rules:
-  - actual_response → in the user's language, ALWAYS in native script (বাংলা or हिंदी or English)
-  - summarize_context → ALWAYS in English, factual, brief (1–2 sentences max)
-  - No markdown, no code fences, raw JSON only
+INCORRECT FORMAT (don't do these):
+  ✗ ```json { ... } ```
+  ✗ "Here's my response: { ... }"
+  ✗ { ... } with any text before or after
+  ✗ Multiple JSON objects
+
+SPECIAL RULES:
+  - actual_response → Reply in the user's detected language, ALWAYS in native script (বাংলা or हिंदी or English)
+    * If user wrote Bengali (even in Roman letters like "ami khub kharap achi"), reply in Bengali script
+    * If user wrote Hindi (even in Roman letters like "mujhe bura lag raha hai"), reply in Hindi script
+    * If user wrote English, reply in English
+  - summarize_context → ALWAYS in English, factual, 1-2 sentences max
+  - DO NOT use double backslashes or escape sequences
+  - If your response contains quotes, escape them as \" ONLY where needed in JSON
+  - Use real newlines inside the JSON string, not \\n
 """
 
         # ─────────────────────────────────────────────────────────────

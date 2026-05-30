@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faUser, faEnvelope, faLock, faShield, faComments } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '../context/AuthContext'
 import '../styles/auth.css'
 
@@ -89,9 +91,7 @@ function AuthPage() {
               <label htmlFor="name">Full Name</label>
               <div className="auth-input-wrap">
                 <span className="auth-input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                  </svg>
+                  <FontAwesomeIcon icon={faUser} />
                 </span>
                 <input id="name" name="name" type="text" placeholder="Your full name"
                   value={formData.name} onChange={handleChange} autoComplete="name" />
@@ -104,10 +104,7 @@ function AuthPage() {
             <label htmlFor="email">Email Address</label>
             <div className="auth-input-wrap">
               <span className="auth-input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="4" width="20" height="16" rx="2"/>
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                </svg>
+                <FontAwesomeIcon icon={faEnvelope} />
               </span>
               <input id="email" name="email" type="email" placeholder="you@example.com"
                 value={formData.email} onChange={handleChange} autoComplete="email" />
@@ -119,10 +116,7 @@ function AuthPage() {
             <label htmlFor="password">Password</label>
             <div className="auth-input-wrap">
               <span className="auth-input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
+                <FontAwesomeIcon icon={faLock} />
               </span>
               <input id="password" name="password" type="password"
                 placeholder={mode === 'signup' ? 'Create a password' : 'Enter your password'}
@@ -137,9 +131,7 @@ function AuthPage() {
               <label htmlFor="confirmPassword">Confirm Password</label>
               <div className="auth-input-wrap">
                 <span className="auth-input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
+                  <FontAwesomeIcon icon={faShield} />
                 </span>
                 <input id="confirmPassword" name="confirmPassword" type="password"
                   placeholder="Re-enter your password" value={formData.confirmPassword}
@@ -163,9 +155,7 @@ function AuthPage() {
           <button type="submit" className="auth-submit-btn" disabled={loading}>
             {loading ? <span className="auth-spinner" /> : (
               <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
+                <FontAwesomeIcon icon={faComments} />
                 {mode === 'signin' ? 'Sign In' : 'Create Account'}
               </>
             )}

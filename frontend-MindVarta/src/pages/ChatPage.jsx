@@ -3,12 +3,13 @@ import Sidebar from '../components/chat/Sidebar'
 import ChatHeader from '../components/chat/ChatHeader'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
+import CrisisModal from '../components/chat/CrisisModal'
 import { useChat } from '../context/ChatContext'
 import '../styles/chat.css'
 
 export default function ChatPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const { sendMessage, isLoading, muted, setMuted, voiceModeEnabled, loadConversations, readOnly } = useChat()
+  const { sendMessage, isLoading, muted, setMuted, voiceModeEnabled, loadConversations, readOnly, showCrisisModal, setShowCrisisModal, language } = useChat()
 
   useEffect(() => {
     loadConversations()
@@ -30,6 +31,13 @@ export default function ChatPage() {
 
         <ChatInput onSend={sendMessage} isTyping={isLoading} readOnly={readOnly} />
       </div>
+
+      {/* Crisis Modal */}
+      <CrisisModal 
+        isOpen={showCrisisModal} 
+        onClose={() => setShowCrisisModal(false)}
+        language={language}
+      />
     </div>
   )
 }

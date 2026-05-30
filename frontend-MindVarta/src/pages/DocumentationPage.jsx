@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faLock, faRobot, faLanguage, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import '../styles/documentation.css'
 
 export default function DocumentationPage() {
@@ -65,22 +67,30 @@ export default function DocumentationPage() {
 
             <div className="feature-grid">
               <div className="feature-item">
-                <span className="feature-icon">🔒</span>
+                <span className="feature-icon">
+                  <FontAwesomeIcon icon={faLock} />
+                </span>
                 <h4>Confidential & Secure</h4>
                 <p>Cookie-based auth, bcrypt passwords, session invalidation on signout</p>
               </div>
               <div className="feature-item">
-                <span className="feature-icon">🤖</span>
+                <span className="feature-icon">
+                  <FontAwesomeIcon icon={faRobot} />
+                </span>
                 <h4>AI-Powered</h4>
                 <p>Groq llama-3.1-8b-instant with cross-session memory summaries</p>
               </div>
               <div className="feature-item">
-                <span className="feature-icon">🗣️</span>
+                <span className="feature-icon">
+                  <FontAwesomeIcon icon={faLanguage} />
+                </span>
                 <h4>Multi-Lingual</h4>
                 <p>English, Hindi, and Bengali across LLM, STT, and TTS</p>
               </div>
               <div className="feature-item">
-                <span className="feature-icon">🎙️</span>
+                <span className="feature-icon">
+                  <FontAwesomeIcon icon={faMicrophone} />
+                </span>
                 <h4>Voice Enabled</h4>
                 <p>Whisper STT via Groq + gTTS for spoken responses</p>
               </div>
@@ -166,7 +176,8 @@ export default function DocumentationPage() {
 │   │   │   ├── ChatInput.jsx      (text + voice input)
 │   │   │   ├── MessageList.jsx    (message bubbles)
 │   │   │   ├── SettingsModal.jsx  (theme, language, mute, sign out)
-│   │   │   └── Sidebar.jsx        (conversation list)
+│   │   │   └── Sidebar.jsx
+|   |   |   └── CrisisModal.jsx         (conversation list)
 │   │   └── landing/
 │   │       └── LandingPage.jsx
 │   ├── context/
@@ -188,6 +199,7 @@ export default function DocumentationPage() {
 │   │   ├── global.css
 │   │   ├── landing.css
 │   │   └── settings.css
+|   |   └── crisis-modal.css
 │   ├── App.jsx
 │   └── main.jsx
 └── vite.config.js`}</pre>
@@ -306,7 +318,7 @@ used       BOOLEAN DEFAULT FALSE`}</pre>
           {/* ── API Endpoints ── */}
           <section id="api" className="doc-section">
             <h2>API Endpoints</h2>
-            <p>Base URL: <code>http://localhost:5000</code> — Interactive docs at <code>/docs</code></p>
+            <p>Base URL: <code>http://localhost:10000</code> — Interactive docs at <code>/docs</code></p>
 
             <h3>Authentication</h3>
             <div className="endpoint"><div className="endpoint-method post">POST</div><div className="endpoint-path">/auth/signup</div><p>Register — sets HttpOnly session cookie</p></div>
@@ -487,8 +499,8 @@ npm run dev`}</pre>
             <h3>Access Points</h3>
             <ul className="access-list">
               <li>🌐 <strong>Frontend:</strong> http://localhost:5173</li>
-              <li>🔌 <strong>Backend API:</strong> http://localhost:5000</li>
-              <li>📚 <strong>API Docs (Swagger):</strong> http://localhost:5000/docs</li>
+              <li>🔌 <strong>Backend API:</strong> http://localhost:10000</li>
+              <li>📚 <strong>API Docs (Swagger):</strong> http://localhost:10000/docs</li>
             </ul>
           </section>
 
@@ -516,28 +528,214 @@ git push origin feature/feature-name
           {/* ── Deployment ── */}
           <section id="deployment" className="doc-section">
             <h2>Deployment</h2>
+            <p>Complete guide for deploying MindVarta on <strong>Render</strong> with both frontend and backend services.</p>
 
-            <h3>Frontend — Vercel / Netlify</h3>
-            <pre className="code-block">{`cd frontend-MindTalk
+            {/* ──── FRONTEND DEPLOYMENT ──── */}
+            <h3>Part 1: Frontend Deployment on Render</h3>
+            
+            <h4>Step 1: Prepare Frontend for Production</h4>
+            <pre className="code-block">{`# From frontend-MindVarta directory
 npm run build
-# Deploy dist/ folder to Vercel or Netlify`}</pre>
 
-            <h3>Backend — Any Python host (Railway, Render, etc.)</h3>
-            <pre className="code-block">{`# Set all env vars in your host's dashboard
-# Start command:
-uvicorn app:app --host 0.0.0.0 --port 5000`}</pre>
+# This creates a production-ready dist/ folder`}</pre>
 
+            <h4>Step 2: Connect Repository to Render</h4>
+            <ol>
+              <li>Go to <strong>render.com</strong> and sign in</li>
+              <li>Click <strong>"New +"</strong> → <strong>"Web Service"</strong></li>
+              <li>Select <strong>"Connect a repository"</strong></li>
+              <li>Authorize GitHub and select your repository</li>
+              <li>Choose the branch (usually <code>main</code>)</li>
+            </ol>
+
+            <h4>Step 3: Configure Frontend Service</h4>
+            <pre className="code-block">{`Name: mindvarta-frontend
+Environment: Node
+Region: Singapore (or your region)
+Branch: main
+Root Directory: frontend-MindVarta
+Build Command: npm install && npm run build
+Start Command: npm install -g serve && serve -s dist -l 3000
+`}</pre>
+
+            <h4>Step 4: Add Environment Variables</h4>
+            <pre className="code-block">{`VITE_API_URL=https://mindvarta-backend.onrender.com
+NODE_ENV=production
+`}</pre>
+
+            <h4>Step 5: Deploy</h4>
+            <p>Click <strong>"Create Web Service"</strong> and wait for deployment to complete (~5 minutes)</p>
+            <p>Your frontend will be available at: <code>https://mindvarta-frontend.onrender.com</code></p>
+
+            {/* ──── BACKEND DEPLOYMENT ──── */}
+            <h3>Part 2: Backend Deployment on Render</h3>
+
+            <h4>Step 1: Prepare Backend Repository</h4>
+            <p>Ensure your backend directory has:</p>
+            <pre className="code-block">{`backend-MindVarta/
+├── app.py
+├── requirements.txt
+├── runtime.txt          # Add this
+├── .gitignore
+├── ai_module/
+├── auth/
+├── database/
+├── stt_module/
+└── tts_module/
+`}</pre>
+
+            <h4>Step 2: Create Required Files</h4>
+            <p><strong>requirements.txt</strong> (ensure all dependencies are included):</p>
+            <pre className="code-block">{`fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+openai==1.3.5
+python-multipart==0.0.6
+python-dotenv==1.0.0
+bcrypt==4.1.1
+pyjwt==2.8.1
+psycopg2-binary==2.9.9
+pyaudio==0.2.13
+SpeechRecognition==3.10.0
+google-cloud-texttospeech==2.14.1
+groq==0.4.2
+aiofiles==23.2.1
+`}</pre>
+
+            <p><strong>runtime.txt</strong> (in backend-MindVarta directory):</p>
+            <pre className="code-block">{`python-3.11.6
+`}</pre>
+
+            <h4>Step 3: Connect Backend Repository</h4>
+            <ol>
+              <li>Go to <strong>render.com</strong></li>
+              <li>Click <strong>"New +"</strong> → <strong>"Web Service"</strong></li>
+              <li>Select your repository</li>
+              <li>Choose the branch</li>
+            </ol>
+
+            <h4>Step 4: Configure Backend Service</h4>
+            <pre className="code-block">{`Name: mindvarta-backend
+Environment: Python 3
+Region: Singapore (same as frontend)
+Branch: main
+Root Directory: backend-MindVarta
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn app:app --host 0.0.0.0 --port 10000
+`}</pre>
+
+            <h4>Step 5: Add Environment Variables</h4>
+            <p>Go to <strong>Environment</strong> tab and add all required variables:</p>
+            <pre className="code-block">{`# AI & LLM
+GROQ_API_KEY=your_groq_api_key
+AI_MODEL=llama-3.1-8b-instant
+TEMPERATURE=0.7
+MAX_TOKENS=1024
+
+# Database (Aiven PostgreSQL)
+DB_HOST=your-aiven-db.aivencloud.com
+DB_PORT=13129
+DB_USER=avnadmin
+DB_PASSWORD=your_aiven_password
+DB_NAME=defaultdb
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+SENDER_EMAIL=your_email@gmail.com
+
+# Frontend URL
+FRONTEND_URL=https://mindvarta-frontend.onrender.com
+
+# JWT
+SECRET_KEY=your_super_secret_jwt_key_min_32_characters
+JWT_EXPIRY_HOURS=168
+
+# Rate Limiting
+FREE_CHAT_LIMIT=10
+`}</pre>
+
+            <h4>Step 6: Update Database Allowlist</h4>
+            <ol>
+              <li>Go to <strong>Aiven Console</strong></li>
+              <li>Select your PostgreSQL database</li>
+              <li>Go to <strong>IP allowlist</strong></li>
+              <li>Add Render's IP address (you'll see it in backend logs or use <code>0.0.0.0/0</code> for testing)</li>
+            </ol>
+
+            <h4>Step 7: Deploy Backend</h4>
+            <p>Click <strong>"Create Web Service"</strong> and wait for deployment (~10 minutes)</p>
+            <p>Your backend will be available at: <code>https://mindvarta-backend.onrender.com</code></p>
+
+            {/* ──── POST-DEPLOYMENT ──── */}
+            <h3>Part 3: Post-Deployment Configuration</h3>
+
+            <h4>Update Frontend API URL</h4>
+            <p>If you changed the backend URL, update frontend environment:</p>
+            <pre className="code-block">{`# In frontend-MindVarta/.env.production
+VITE_API_URL=https://mindvarta-backend.onrender.com
+`}</pre>
+            <p>Redeploy frontend</p>
+
+            <h4>Test All Features</h4>
+            <ol>
+              <li><strong>Auth:</strong> Sign up and sign in</li>
+              <li><strong>Chat:</strong> Send messages and verify LLM responses</li>
+              <li><strong>Voice:</strong> Test STT (speech-to-text) and TTS (text-to-speech)</li>
+              <li><strong>Email:</strong> Test password reset functionality</li>
+              <li><strong>Database:</strong> Verify conversation history persists</li>
+            </ol>
+
+            <h4>Monitor Production</h4>
+            <pre className="code-block">{`# View backend logs in Render dashboard:
+# Logs tab → search for errors or API calls
+
+# Common issues:
+- Database connection timeout → Check IP allowlist
+- 500 errors → Check environment variables
+- CORS errors → Verify FRONTEND_URL in backend
+- Auth failures → Check JWT_SECRET_KEY
+`}</pre>
+
+            {/* ──── FINAL CHECKLIST ──── */}
             <div className="deployment-checklist">
-              <h4>Pre-deployment Checklist</h4>
+              <h4>✓ Pre-Deployment Checklist</h4>
               <ul>
-                <li>All env vars configured on host</li>
-                <li>Aiven DB IP allowlist updated for production IP</li>
-                <li>CORS origins updated to production frontend URL</li>
-                <li>Cookie <code>secure=True</code> enabled for HTTPS</li>
-                <li>SMTP credentials verified</li>
-                <li><code>FRONTEND_URL</code> set to production domain for reset emails</li>
+                <li>✅ All environment variables configured in Render dashboard</li>
+                <li>✅ Database IP allowlist includes Render server IP</li>
+                <li>✅ CORS origins updated to production frontend URL</li>
+                <li>✅ Cookie <code>secure=True</code> enabled for HTTPS (default on Render)</li>
+                <li>✅ SMTP credentials verified with test email</li>
+                <li>✅ <code>FRONTEND_URL</code> set correctly for password reset emails</li>
+                <li>✅ <code>SECRET_KEY</code> is strong and at least 32 characters</li>
+                <li>✅ requirements.txt has all dependencies</li>
+                <li>✅ Frontend build completes without errors</li>
+                <li>✅ Backend starts successfully in production</li>
               </ul>
             </div>
+
+            <h4>Useful Render Commands & Info</h4>
+            <pre className="code-block">{`# View logs (in Render dashboard or CLI)
+render logs <service-name>
+
+# Restart service
+render restart <service-name>
+
+# Check health
+curl https://mindvarta-backend.onrender.com/health
+
+# View deployment history
+render deployments list
+
+# Environment variables can be updated anytime
+# Services auto-redeploy after env var changes
+`}</pre>
+
+            <p><strong>Support:</strong> For Render issues, check their <a href="https://docs.render.com/" target="_blank" rel="noopener noreferrer">documentation</a></p>
           </section>
 
         </main>

@@ -99,6 +99,29 @@ body {
   overflow: hidden;
 }
 
+/* ===== MOBILE RESPONSIVENESS ===== */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  :root {
+    --sidebar-width: 70px;
+    --header-height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+
+  :root {
+    --sidebar-width: 60px;
+    --header-height: 50px;
+  }
+}
+
 #root {
   height: 100vh;
   display: flex;

@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faComments, faHome, faTrash, faGear, faPlus, faMoon, faSun } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '../../context/ThemeContext'
 import { useChat } from '../../context/ChatContext'
 import SettingsModal from './SettingsModal'
@@ -19,36 +21,6 @@ const formatDate = (isoString) => {
     return ''
   }
 }
-
-const ChatIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-)
-
-const HomeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-    <polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
-)
-
-const DeleteIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-    <path d="M10 11v6" />
-    <path d="M14 11v6" />
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-  </svg>
-)
-
-const SettingsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-)
 
 export default function Sidebar({ collapsed }) {
   const navigate = useNavigate()
@@ -80,17 +52,13 @@ export default function Sidebar({ collapsed }) {
           onClick={toggleTheme}
           aria-label="Toggle theme"
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          <FontAwesomeIcon icon={theme === 'dark' ? faSun : faMoon} />
         </button>
       </div>
 
       {/* New Chat */}
       <button className="new-chat-btn" onClick={startNewChat}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="16" />
-          <line x1="8" y1="12" x2="16" y2="12" />
-        </svg>
+        <FontAwesomeIcon icon={faPlus} />
         New Chat
       </button>
 
@@ -103,7 +71,9 @@ export default function Sidebar({ collapsed }) {
             className={`conversation-item${activeChatId === conv.conv_id ? ' active' : ''}`}
             onClick={() => selectConversation(conv.conv_id)}
           >
-            <span className="conversation-icon"><ChatIcon /></span>
+            <span className="conversation-icon">
+              <FontAwesomeIcon icon={faComments} />
+            </span>
             <div className="conversation-info">
               <div className="conversation-title">{conv.title}</div>
               <div className="conversation-time">
@@ -112,11 +82,16 @@ export default function Sidebar({ collapsed }) {
             </div>
             <button
               className="conversation-delete-btn"
-              onClick={(e) => handleDeleteConversation(e, conv.conv_id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                const confirmed = window.confirm('Delete this conversation permanently? This cannot be undone.')
+                if (!confirmed) return
+                handleDeleteConversation(e, conv.conv_id)
+              }}
               aria-label={`Delete ${conv.title}`}
               title="Delete conversation"
             >
-              <DeleteIcon />
+              <FontAwesomeIcon icon={faTrash} />
             </button>
           </div>
         ))}
@@ -125,10 +100,10 @@ export default function Sidebar({ collapsed }) {
       {/* Footer nav */}
       <div className="sidebar-footer">
         <button className="sidebar-nav-btn" onClick={() => navigate('/')}>
-          <HomeIcon /> Home
+          <FontAwesomeIcon icon={faHome} /> Home
         </button>
         <button className="sidebar-nav-btn" onClick={() => setSettingsOpen(true)}>
-          <SettingsIcon /> Settings
+          <FontAwesomeIcon icon={faGear} /> Settings
         </button>
       </div>
     </aside>

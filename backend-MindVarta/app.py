@@ -408,6 +408,8 @@ async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)
     bot_reply = result["actual_response"]
     new_summary = result.get("summarize_context", "").strip() or conv["memory"]
     new_count = conv["count"] + 1
+    crisis_detected = result.get("crisis_detected", False)
+    crisis_level = result.get("crisis_level", "none")
 
     db.save_message(conv_id, "user", user_input)
     db.save_message(conv_id, "assistant", bot_reply)
@@ -428,6 +430,8 @@ async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)
         "language": language,
         "messages_used": new_count,
         "messages_remaining": FREE_CHAT_LIMIT - new_count,
+        "crisis_detected": crisis_detected,
+        "crisis_level": crisis_level,
     }
 
 
