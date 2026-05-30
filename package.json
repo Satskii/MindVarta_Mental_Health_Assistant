@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/Satskii/CodeZenith_MindTalk/issues"
   },
-  "homepage": "https://github.com/Satskii/CodeZenith_MindTalk#readme"
+  "homepage": "https://github.com/Satskii/CodeZenith_MindTalk#readme",
+  "dependencies": {
+    "@fortawesome/react-fontawesome": "^3.3.1"
+  }
 }

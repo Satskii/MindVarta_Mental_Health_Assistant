@@ -559,13 +559,13 @@ Start Command: npm install -g serve && serve -s dist -l 3000
 `}</pre>
 
             <h4>Step 4: Add Environment Variables</h4>
-            <pre className="code-block">{`VITE_API_URL=https://mindvarta-backend.onrender.com
+            <pre className="code-block">{`VITE_API_URL=https://mindvarta-mental-health-assistant.onrender.com
 NODE_ENV=production
 `}</pre>
 
             <h4>Step 5: Deploy</h4>
             <p>Click <strong>"Create Web Service"</strong> and wait for deployment to complete (~5 minutes)</p>
-            <p>Your frontend will be available at: <code>https://mindvarta-frontend.onrender.com</code></p>
+            <p>Your frontend will be available at: <code>https://mindvarta-mental-health-assistant-2.onrender.com</code></p>
 
             {/* ──── BACKEND DEPLOYMENT ──── */}
             <h3>Part 2: Backend Deployment on Render</h3>
@@ -669,7 +669,7 @@ FREE_CHAT_LIMIT=10
 
             <h4>Step 7: Deploy Backend</h4>
             <p>Click <strong>"Create Web Service"</strong> and wait for deployment (~10 minutes)</p>
-            <p>Your backend will be available at: <code>https://mindvarta-backend.onrender.com</code></p>
+            <p>Your backend will be available at: <code>https://mindvarta-mental-health-assistant.onrender.com</code></p>
 
             {/* ──── POST-DEPLOYMENT ──── */}
             <h3>Part 3: Post-Deployment Configuration</h3>
@@ -677,7 +677,7 @@ FREE_CHAT_LIMIT=10
             <h4>Update Frontend API URL</h4>
             <p>If you changed the backend URL, update frontend environment:</p>
             <pre className="code-block">{`# In frontend-MindVarta/.env.production
-VITE_API_URL=https://mindvarta-backend.onrender.com
+VITE_API_URL=https://mindvarta-mental-health-assistant.onrender.com
 `}</pre>
             <p>Redeploy frontend</p>
 
@@ -726,7 +726,7 @@ render logs <service-name>
 render restart <service-name>
 
 # Check health
-curl https://mindvarta-backend.onrender.com/health
+curl https://mindvarta-mental-health-assistant.onrender.com/health
 
 # View deployment history
 render deployments list
