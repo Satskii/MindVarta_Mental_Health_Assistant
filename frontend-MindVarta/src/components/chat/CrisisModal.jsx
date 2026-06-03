@@ -5,6 +5,7 @@ const CRISIS_RESOURCES = {
   english: {
     title: 'Crisis Support Resources',
     subtitle: 'You are not alone. Help is available 24/7',
+    footer: 'If you\'re in immediate danger, please call emergency services (911 in US, 112 in India, 999 in Bangladesh) or visit your nearest hospital.',
     resources: [
       {
         name: 'National Suicide Prevention Lifeline',
@@ -35,6 +36,7 @@ const CRISIS_RESOURCES = {
   hindi: {
     title: 'संकट समर्थन संसाधन',
     subtitle: 'आप अकेले नहीं हैं। 24/7 सहायता उपलब्ध है',
+    footer: 'अगर आप तुरंत खतरे में हैं, तो कृपया आपातकालीन सेवाएं (भारत में 112) को कॉल करें या अपने निकटतम अस्पताल में जाएं।',
     resources: [
       {
         name: 'आसरा संकट हेल्पलाइन',
@@ -65,6 +67,7 @@ const CRISIS_RESOURCES = {
   bengali: {
     title: 'সংকট সহায়তা সম্পদ',
     subtitle: 'আপনি একা নন। 24/7 সাহায্য পাওয়া যায়',
+    footer: 'যদি আপনি তাৎক্ষণিক বিপদে থাকেন, তবে জরুরি সেবা (বাংলাদেশে 999) কল করুন বা আপনার নিকটতম হাসপাতালে যান।',
     resources: [
       {
         name: 'ঢাকা মানসিক স্বাস্থ্য কেন্দ্র',
@@ -161,7 +164,7 @@ export default function CrisisModal({ isOpen, onClose, language = 'english' }) {
 
         {/* Footer Message */}
         <div className="crisis-modal-footer">
-          <p>If you're in immediate danger, please call emergency services (911 in US, 112 in India, 999 in Bangladesh) or visit your nearest hospital.</p>
+          <p>{resourceData.footer}</p>
         </div>
       </div>
     </div>

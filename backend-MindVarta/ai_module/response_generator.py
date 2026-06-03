@@ -15,6 +15,98 @@ from ai_module.prompts.language_prompts import PromptManagerV3
 
 prompt_manager = PromptManagerV3()
 
+MAX_PROMPT_TOKENS = 2600
+MAX_RESPONSE_TOKENS = 300
+MAX_HISTORY_MESSAGES = 4
+MAX_MEMORY_CHARS = 350
+
+
+def estimate_text_tokens(text: str) -> int:
+    """Rough token estimate used to keep Groq requests under the free-tier TPM cap."""
+    text = text or ""
+    words = len(re.findall(r"\w+|[^\w\s]", text))
+    chars = len(text)
+    return max(1, int(chars / 4 + words * 0.6))
+
+
+def estimate_prompt_tokens(messages: list) -> int:
+    return sum(estimate_text_tokens(msg.get("content", "")) for msg in messages)
+
+
+def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) -> list:
+    """Trim the prompt to fit the Groq free-tier token budget without changing the user question."""
+    trimmed = [dict(msg) for msg in messages]
+
+    def over_budget(items):
+        return estimate_prompt_tokens(items) > max_tokens
+
+    # Drop memory/context system blocks first, since they are the easiest to cut.
+    for idx, msg in enumerate(trimmed):
+        if msg.get("role") == "system" and "What you already know about this person" in msg.get("content", ""):
+            trimmed[idx]["content"] = ""
+            break
+
+    # Keep only the newest conversation turns.
+    while over_budget(trimmed) and len(trimmed) > 4:
+        for idx in range(1, len(trimmed) - 1):
+            if trimmed[idx].get("role") in {"user", "assistant"}:
+                del trimmed[idx]
+                break
+        else:
+            break
+
+    # Shrink long content aggressively.
+    previous_tokens = estimate_prompt_tokens(trimmed)
+    for _ in range(8):
+        if not over_budget(trimmed):
+            break
+        previous_tokens = estimate_prompt_tokens(trimmed)
+        for msg in trimmed:
+            content = msg.get("content", "") or ""
+            if len(content) > 120:
+                msg["content"] = content[:120]
+                break
+        if estimate_prompt_tokens(trimmed) >= previous_tokens:
+            break
+
+    # As a last resort, strip all non-essential system text and keep only the user question.
+    if over_budget(trimmed):
+        trimmed = [msg for msg in trimmed if msg.get("role") == "user"]
+        if not trimmed:
+            trimmed = [{"role": "user", "content": "Please reply briefly."}]
+
+    return trimmed
+
+
+# ─────────────────────────────────────────────────────────────
+# FIX MISSING SPACES
+# ─────────────────────────────────────────────────────────────
+
+def fix_missing_spaces(text: str) -> str:
+    """
+    Fix common cases where spaces are missing between words.
+    Handles: "youa" → "you a", "companionand" → "companion and", etc.
+    """
+    if not text:
+        return text
+    
+    # Pattern 1: lowercase word directly followed by lowercase word starting with a vowel
+    # e.g., "youa" → "you a", "thea" → "the a", "anda" → "and a"
+    text = re.sub(r'([a-z]{2,})([aeiou][a-z]+)', r'\1 \2', text)
+    
+    # Pattern 2: common word endings directly followed by common starting words
+    # e.g., "companionand" → "companion and", "friendbut" → "friend but"
+    common_words = r'\b(and|but|the|is|are|was|were|in|to|of|or|for|with|by|from|as|be|an|at|if|that|this|it)'
+    text = re.sub(rf'([a-z])({common_words})\b', r'\1 \2', text, flags=re.IGNORECASE)
+    
+    # Pattern 3: Fix doubled words accidentally joined (rare but possible)
+    # e.g., "veryvery" shouldn't occur, but if it does, we won't fix it to avoid false positives
+    
+    # Clean up any multiple spaces that might have been created
+    text = re.sub(r'\s+', ' ', text)
+    
+    return text.strip()
+
 
 # ─────────────────────────────────────────────────────────────
 # RESPONSE EXTRACTION
@@ -49,6 +141,7 @@ def extract_response_and_summary(raw_text: str) -> tuple:
         summarize_context = parsed.get("summarize_context", "").strip()
 
         if actual_response:
+            actual_response = fix_missing_spaces(actual_response)
             if not summarize_context:
                 summarize_context = generate_fallback_summary(actual_response)
             return actual_response, summarize_context
@@ -65,6 +158,7 @@ def extract_response_and_summary(raw_text: str) -> tuple:
             actual_response = parsed.get("actual_response", "").strip()
             summarize_context = parsed.get("summarize_context", "").strip()
             if actual_response:
+                actual_response = fix_missing_spaces(actual_response)
                 if not summarize_context:
                     summarize_context = generate_fallback_summary(actual_response)
                 return actual_response, summarize_context
@@ -140,6 +234,8 @@ def extract_response_and_summary(raw_text: str) -> tuple:
     if not summarize_context:
         summarize_context = generate_fallback_summary(actual_response)
 
+    # Fix missing spaces in the response before returning
+    actual_response = fix_missing_spaces(actual_response)
     return actual_response, summarize_context
 
 
@@ -161,13 +257,78 @@ def generate_fallback_summary(response_text: str) -> str:
     return response_text[:200]
 
 
+def looks_incomplete(text: str) -> bool:
+    """Heuristics for partially generated or cut-off replies, supporting multiple languages."""
+    text = (text or "").strip()
+    if not text:
+        return False
+
+    # JSON-style output that ends without a balanced object is usually incomplete.
+    if '"actual_response"' in text and text.count('{') != text.count('}'):
+        return True
+
+    # Detect text that ends without proper sentence-ending markers.
+    # Works across languages: English (. ! ?), Hindi/Bengali (।), Arabic (؟), Chinese (。)
+    sentence_endings = r'[.!?।؟。\u0964\u0965]'
+    natural_ending = re.search(sentence_endings + r'["\')\]]*\s*$', text)
+    
+    # If response is long but doesn't end with punctuation, likely cut off.
+    if len(text) > 100 and not natural_ending:
+        return True
+
+    # If text ends with ellipsis but seems to continue further (common truncation)
+    if text.endswith('...') and len(text) > 120:
+        return True
+
+    # Detect response that ends abruptly mid-phrase (no space before potential cut)
+    if len(text) > 80 and re.search(r'[a-zA-Z0-9\u0980-\u09FF\u0900-\u097F]\s*$', text):
+        # Word ending with no punctuation
+        last_few_chars = text[-30:].split()
+        if last_few_chars and len(last_few_chars[-1]) < 5:
+            # Very short last word often means truncation
+            return True
+
+    return False
+
+
+def continue_partial_response(client, messages: list, partial_text: str, max_tokens: int = 220) -> str:
+    """Ask the model to continue a cut-off reply instead of starting over."""
+    continuation_prompt = (
+        "The previous response was cut off mid-sentence. "
+        "Continue ONLY from where it stopped. "
+        "Do NOT repeat the beginning or any earlier content. "
+        "Use the same language as the original response. "
+        "Complete the thought naturally."
+    )
+    try:
+        # Use a simplified system prompt for continuation to save tokens
+        continuation_messages = [
+            {"role": "system", "content": "You are continuing an unfinished response. Add only the missing part."},
+            {"role": "user", "content": f"{continuation_prompt}\n\nCut-off text:\n{partial_text[-800:]}"},
+        ]
+        continuation = client.chat.completions.create(
+            model=AI_MODEL,
+            messages=continuation_messages,
+            temperature=0.7,
+            max_tokens=max_tokens,
+        )
+        next_chunk = continuation.choices[0].message.content.strip()
+        if next_chunk and next_chunk.lower() != "i cannot continue this.":
+            return next_chunk
+        return ""
+    except Exception as exc:
+        print(f"[WARN] Continuation fallback failed: {exc}")
+        return ""
+
+
 # ─────────────────────────────────────────────────────────────
 # CRISIS LEVEL CLASSIFIER
 # ─────────────────────────────────────────────────────────────
 
-def classify_crisis_level(user_input: str) -> str:
+def classify_crisis_level(user_input: str, language: str = "english") -> str:
     """
-    Lightweight pattern-based crisis level estimation.
+    Multilingual pattern-based crisis level estimation.
+    Supports: English, Hindi (Devanagari & Romanized), Bengali (Bengali script & Romanized)
 
     Returns: "high" | "medium" | "none"
 
@@ -175,39 +336,106 @@ def classify_crisis_level(user_input: str) -> str:
     """
 
     text = user_input.lower()
-
-    high_risk = [
+    
+    # ─── HIGH RISK PATTERNS ───────────────────────────────────────
+    high_risk_patterns = [
+        # English
         r"\bi will kill myself\b",
         r"\bi want to die\b",
         r"\bi('m| am) going to (commit suicide|end my life)\b",
         r"\bend my life\b",
         r"\bi don.t want to live\b",
-        r"\bhate katchi\b",
-        r"\bblade diye kat\w*\b",
         r"\bbleeding\b",
         r"\bi will die in \d+\b",
         r"\btook (pills|tablets|overdose)\b",
         r"\bjust cut\b",
+        
+        # Romanized Hindi
+        r"\bkaat\s+liya\b",
+        r"\bgoli\s+kha\s+li\b",
+        r"\bdawa\s+kha\s+li\b",
+        r"\babhi\s+kat\s+raha\b",
+        r"\babhi\s+kat\s+rahi\b",
+        
+        # Romanized Bengali
+        r"\bhate\s+katchi\b",
+        r"\bblade\s+diye\s+kat\w*\b",
+        r"\bekhon\s+(katchi|katchhi|blade)\b",
+        
+        # Hindi Devanagari (native script)
+        r"मरना\s+चाहता",
+        r"मरना\s+चाहती",
+        r"खून\s+आ\s+रहा",
+        r"काट\s+लिया",
+        r"गोली\s+खा\s+ली",
+        r"दवा\s+खा\s+ली",
+        r"अभी\s+काट\s+रहा",
+        r"अभी\s+काट\s+रही",
+        r"अभी\s+(ख़ून|खून|कट|काट)",
+        
+        # Bengali script (native)
+        r"হাতে\s+কাটছি",
+        r"রক্ত\s+পড়ছে",
+        r"এখন\s+কাটছি",
+        r"ব্লেড\s+দিয়ে",
+        r"মরে\s+যেতে\s+চাই",
     ]
-
-    medium_risk = [
+    
+    # ─── MEDIUM RISK PATTERNS ──────────────────────────────────────
+    medium_risk_patterns = [
+        # English
         r"\bsuicid\w*\b",
         r"\bself.?harm\b",
         r"\bhurt myself\b",
         r"\bcut myself\b",
         r"\bnothing matters\b",
         r"\bbetter off without me\b",
-        r"\bjeena nahi chah\w*\b",
-        r"\bmar jaana chah\w*\b",
-        r"\bsuicide korte chacchi\b",
-        r"\bmare jabo\b",
+        r"\bi don.t want to be here\b",
+        
+        # Romanized Hindi
+        r"\bmar\s+ja(na|oon|au)\b",
+        r"\bmar\s+jaana\s+chah\w*\b",
+        r"\bjeena\s+nahi\s+chah\w*\b",
+        r"\bkhatam\s+kar\s+l\w*\b",
+        r"\bjaan\s+de\s+d\w*\b",
+        r"\bkud\s+ko\s+(hurt|nuksaan)\b",
+        r"\bnahi\s+rehna\s+chahta\b",
+        r"\bnahi\s+rehna\s+chahti\b",
+        
+        # Romanized Bengali
+        r"\bmare\s+ja(bo|te\s+chai|chi)\b",
+        r"\bnijeke\s+khatam\b",
+        r"\bbachte\s+chai\s+na\b",
+        r"\bjibon\s+shesh\b",
+        r"\bnijer\s+khoti\b",
+        r"\bbachte\s+ichhe\s+(nei|nai|na)\b",
+        
+        # Hindi Devanagari
+        r"जीना\s+नहीं\s+चाहता",
+        r"जीना\s+नहीं\s+चाहती",
+        r"खुद\s+को\s+नुकसान",
+        r"जिंदगी\s+खत्म",
+        r"नहीं\s+रहना\s+चाहता",
+        r"नहीं\s+रहना\s+चाहती",
+        r"सब\s+खत्म\s+कर",
+        
+        # Bengali script
+        r"আর\s+বাঁচতে\s+চাই\s+না",
+        r"জীবন\s+শেষ\s+করতে\s+চাই",
+        r"নিজেকে\s+মেরে",
+        r"বাঁচতে\s+ইচ্ছে\s+করছে\s+না",
+        r"জীবনের\s+মানে\s+নেই",
+        r"আর\s+থাকতে\s+চাই\s+না",
+        r"মরে\s+যাই",
     ]
-
-    for pattern in high_risk:
+    
+    # Check high risk patterns first
+    for pattern in high_risk_patterns:
         if re.search(pattern, text):
             return "high"
-
-    for pattern in medium_risk:
+    
+    # Then medium risk
+    for pattern in medium_risk_patterns:
         if re.search(pattern, text):
             return "medium"
 
@@ -242,7 +470,7 @@ def generate_response(
 
     # ── Crisis detection ──────────────────────────────────────
     possible_crisis = prompt_manager.detect_possible_crisis(user_input)
-    crisis_level    = classify_crisis_level(user_input)
+    crisis_level    = classify_crisis_level(user_input, language)
 
     if possible_crisis:
         print(
@@ -254,13 +482,21 @@ def generate_response(
     # ── Build messages ────────────────────────────────────────
     client = OpenAI(api_key=GROQ_API_KEY, base_url=BASE_URL)
 
+    safe_history = conversation_history[-MAX_HISTORY_MESSAGES:] if len(conversation_history) > MAX_HISTORY_MESSAGES else conversation_history
+    safe_memory = (memory_summary or "")[:MAX_MEMORY_CHARS].strip()
+
     messages = prompt_manager.build_prompt(
         user_input=user_input,
-        conversation_history=conversation_history,
+        conversation_history=safe_history,
         language=language,
-        memory_summary=memory_summary,
+        memory_summary=safe_memory,
         possible_crisis=possible_crisis,
     )
+    messages = trim_prompt_for_budget(messages)
+
+    estimated_prompt_tokens = estimate_prompt_tokens(messages)
+    if estimated_prompt_tokens > MAX_PROMPT_TOKENS:
+        print(f"[WARN] Prompt still oversized after trimming: {estimated_prompt_tokens} tokens")
 
     # ── Extra high-crisis reinforcement ───────────────────────
     # build_prompt already injects the main crisis guidance.
@@ -281,10 +517,22 @@ def generate_response(
         model=AI_MODEL,
         messages=messages,
         temperature=TEMPERATURE,
-        max_tokens=MAX_TOKENS
+        max_tokens=min(MAX_TOKENS, MAX_RESPONSE_TOKENS)
     )
 
     raw_output = completion.choices[0].message.content.strip()
+
+    # If the reply looks cut off, ask the model to continue from the last sentence.
+    if looks_incomplete(raw_output):
+        print(f"[CONTINUATION] Response looks incomplete ({len(raw_output)} chars). Asking model to continue...")
+        continuation = continue_partial_response(client, messages, raw_output)
+        if continuation:
+            print(f"[CONTINUATION] Got {len(continuation)} chars of continuation. Stitching together...")
+            raw_output = f"{raw_output} {continuation}".strip()
+        else:
+            print(f"[CONTINUATION] No continuation returned, using partial response.")
+    else:
+        print(f"[RESPONSE] Complete response ({len(raw_output)} chars) received.")
 
     # ── Extract response ──────────────────────────────────────
     actual_response, summarize_context = extract_response_and_summary(raw_output)

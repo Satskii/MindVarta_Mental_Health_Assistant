@@ -165,6 +165,11 @@ export function ChatProvider({ children }) {
       if (data.messages_used !== undefined) setMessagesUsed(data.messages_used)
       if (data.messages_remaining === 0) setLimitReached(true)
 
+      // Update language if detected language differs
+      if (data.language && data.language !== language) {
+        setLanguageState(data.language)
+      }
+
       // Handle crisis detection
       if (data.crisis_detected) {
         setCrisisDetected(true)
@@ -173,7 +178,7 @@ export function ChatProvider({ children }) {
       }
 
       addMessage({ role: 'assistant', text: data.response })
-      if (voiceModeEnabled && !muted) speakText(data.response, language)
+      if (voiceModeEnabled && !muted) speakText(data.response, data.language || language)
     } catch (error) {
       console.error('Error sending message:', error)
       addMessage({ role: 'assistant', text: 'Sorry, I encountered an error. Please try again.' })
@@ -187,6 +192,11 @@ export function ChatProvider({ children }) {
     convIdRef.current = id
     setReadOnly(true)
     setIsViewingPreviousChat(id !== currentChatId) // Set to true if viewing a different chat than current
+    
+    // Reset crisis states when viewing previous chat
+    setCrisisDetected(false)
+    setCrisisLevel(null)
+    setShowCrisisModal(false)
     
     // Fetch messages for the selected conversation
     fetch(`${API_BASE_URL}/conversations/${id}/messages`, { credentials: 'include' })
@@ -213,6 +223,11 @@ export function ChatProvider({ children }) {
       setIsViewingPreviousChat(false)
       setReadOnly(false)
       
+      // Reset crisis states when returning to current chat
+      setCrisisDetected(false)
+      setCrisisLevel(null)
+      setShowCrisisModal(false)
+      
       // Fetch messages for the current conversation
       fetch(`${API_BASE_URL}/conversations/${currentChatId}/messages`, { credentials: 'include' })
         .then(res => res.ok ? res.json() : null)
@@ -228,9 +243,18 @@ export function ChatProvider({ children }) {
           }
         })
         .catch(err => console.error('Error loading current conversation messages:', err))
+    } else {
+      // No current chat exists, reset to welcome screen
+      setActiveChatId(null)
+      convIdRef.current = null
+      setIsViewingPreviousChat(false)
+      setReadOnly(false)
+      setCrisisDetected(false)
+      setCrisisLevel(null)
+      setShowCrisisModal(false)
+      setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME_MESSAGES[language] || WELCOME_MESSAGES.english, timestamp: new Date() }])
     }
   }
-
   const deleteConversation = async (convId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/conversations/${convId}`, {
