@@ -3,17 +3,16 @@
 .documentation-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden;
 }
 
 /* Header */
 .doc-header {
   background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
   color: white;
-  padding: 3rem 1.5rem;
+  padding: 1.4rem 1.5rem 1.2rem;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -33,7 +32,7 @@
 
 .doc-header h1 {
   font-size: 2.5rem;
-  margin: 1rem 0 0.5rem 0;
+  margin: 0.3rem 0 0.2rem 0;
   font-weight: 700;
   position: relative;
   z-index: 1;
@@ -47,25 +46,26 @@
 }
 
 .doc-back-btn {
-  position: fixed;
-  top: 2rem;
-  left: 2rem;
-  background: var(--accent-primary);
-  border: 1px solid var(--accent-primary);
+  position: absolute;
+  top: 1.2rem;
+  left: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   color: white;
-  padding: 0.7rem 1.2rem;
+  padding: 0.55rem 1.1rem;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 0.9rem;
   transition: all 0.3s ease;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+  backdrop-filter: blur(4px);
 }
 
 .doc-back-btn:hover {
-  background: var(--accent-secondary);
-  transform: translateX(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Container */
@@ -75,11 +75,9 @@
   gap: 2rem;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
-  flex: 1;
+  padding: 1.2rem 1.5rem;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  align-items: start;
 }
 
 /* Sidebar */
@@ -88,9 +86,14 @@
   padding: 1.5rem;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  height: 100%;
+
+  position: sticky;
+  top: 1.5rem;
+  align-self: start;
+
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
-  overflow-x: hidden;
+  padding-right: 0.75rem;
 }
 
 .doc-sidebar h3 {
@@ -131,10 +134,10 @@
 /* Main Content */
 .doc-content {
   max-width: 900px;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
   padding-right: 1rem;
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 .doc-section {
@@ -161,7 +164,7 @@
 .doc-section h4 {
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 1rem 0 0.5rem 0;
+  margin: 0.3rem 0 0.2rem 0;
   color: var(--text-primary);
 }
 
@@ -724,16 +727,16 @@
   }
 
   .doc-back-btn {
-    position: fixed;
-    top: 1rem;
+    top: 0.9rem;
     left: 1rem;
-    padding: 0.6rem 1rem;
-    font-size: 0.85rem;
-    z-index: 99;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.82rem;
   }
 
   .doc-content {
     padding-right: 0;
+    height: auto;
+    overflow-y: visible;
   }
 
   .doc-section {
@@ -1062,4 +1065,137 @@
   .code-block {
     background: rgba(0, 0, 0, 0.3);
   }
+}
+
+
+/* ── Light Mode Overrides (data-theme="light") ── */
+[data-theme="light"] .doc-header {
+  background: linear-gradient(
+    135deg,
+    #1e3a8a 0%,
+    #2563eb 50%,
+    #1d4ed8 100%
+  );
+}
+
+[data-theme="light"] .doc-back-btn {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+[data-theme="light"] .doc-back-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .doc-header h1,
+[data-theme="light"] .doc-header p {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+[data-theme="light"] .doc-sidebar {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .toc-link {
+  color: #475569;
+}
+
+[data-theme="light"] .toc-link:hover {
+  background: #e2e8f0;
+  color: #4f46e5;
+  border-left-color: #4f46e5;
+}
+
+[data-theme="light"] .doc-content {
+  color: #1e293b;
+}
+
+[data-theme="light"] .doc-section h2 {
+  color: #1e293b;
+  border-bottom-color: #4f46e5;
+}
+
+[data-theme="light"] .doc-section h3,
+[data-theme="light"] .doc-section h4 {
+  color: #1e293b;
+}
+
+[data-theme="light"] .doc-section p,
+[data-theme="light"] .doc-section li {
+  color: #475569;
+}
+
+[data-theme="light"] .feature-item,
+[data-theme="light"] .tech-stack,
+[data-theme="light"] .component,
+[data-theme="light"] .module-card,
+[data-theme="light"] .arch-box,
+[data-theme="light"] .endpoint,
+[data-theme="light"] .deployment-checklist,
+[data-theme="light"] .deployment-option,
+[data-theme="light"] .flow-list li {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .feature-item:hover,
+[data-theme="light"] .module-card:hover {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+[data-theme="light"] .code-block {
+  background: #1e293b;
+  color: #a5b4fc;
+  border-color: #334155;
+}
+
+[data-theme="light"] .doc-sidebar h3 {
+  color: #4f46e5;
+}
+
+[data-theme="light"] .documentation-page {
+  background: #f0f4ff;
+}
+
+
+/* Documentation Dark Theme Improvements */
+
+[data-theme="dark"] .doc-sidebar {
+  background: #0f172a;
+  border-color: rgba(96, 165, 250, 0.15);
+}
+
+[data-theme="dark"] .feature-item,
+[data-theme="dark"] .tech-stack,
+[data-theme="dark"] .component,
+[data-theme="dark"] .module-card,
+[data-theme="dark"] .arch-box,
+[data-theme="dark"] .endpoint,
+[data-theme="dark"] .deployment-checklist,
+[data-theme="dark"] .deployment-option,
+[data-theme="dark"] .security-item,
+[data-theme="dark"] .voice-feature,
+[data-theme="dark"] .flow-list li {
+  background: #0b1220;
+  border-color: rgba(96, 165, 250, 0.12);
+}
+
+[data-theme="dark"] .feature-item:hover,
+[data-theme="dark"] .module-card:hover {
+  background: #172554;
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .doc-section h2 {
+  border-bottom-color: #3b82f6;
+}
+
+[data-theme="dark"] .doc-sidebar h3 {
+  color: #60a5fa;
 }

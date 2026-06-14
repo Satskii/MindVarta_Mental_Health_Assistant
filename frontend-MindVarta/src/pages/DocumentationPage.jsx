@@ -28,7 +28,12 @@ export default function DocumentationPage() {
   ]
 
   const scrollToSection = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    const target = document.getElementById(id)
+    const container = document.querySelector('.doc-content')
+    if (target && container) {
+      const topOffset = target.offsetTop - container.offsetTop
+      container.scrollTo({ top: topOffset, behavior: 'smooth' })
+    }
   }
 
   return (
