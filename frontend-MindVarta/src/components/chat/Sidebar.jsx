@@ -82,12 +82,7 @@ export default function Sidebar({ collapsed }) {
             </div>
             <button
               className="conversation-delete-btn"
-              onClick={(e) => {
-                e.stopPropagation()
-                const confirmed = window.confirm('Delete this conversation permanently? This cannot be undone.')
-                if (!confirmed) return
-                handleDeleteConversation(e, conv.conv_id)
-              }}
+              onClick={(e) => handleDeleteConversation(e, conv.conv_id)}
               aria-label={`Delete ${conv.title}`}
               title="Delete conversation"
             >
