@@ -80,8 +80,8 @@ DB_PASSWORD=your_db_password
 python app.py
 ```
 
-Server starts at `http://localhost:5000`
-Interactive API docs at `http://localhost:5000/docs`
+Server starts at `http://localhost:10000`
+Interactive API docs at `http://localhost:10000/docs`
 
 ---
 
