@@ -524,7 +524,7 @@ git push origin feature/feature-name
             <ul className="feature-list">
               <li>Never commit <code>.env</code> — it's in <code>.gitignore</code></li>
               <li>Use <code>.env.example</code> to document required variables</li>
-              <li>Run backend on port 5000, frontend on 5173</li>
+              <li>Run backend on port 10000, frontend on 5173</li>
               <li>Use semantic commit messages (<code>feat:</code>, <code>fix:</code>, <code>chore:</code>)</li>
               <li>Pull with <code>--rebase</code> to keep history clean</li>
             </ul>

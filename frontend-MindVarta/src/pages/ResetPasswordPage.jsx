@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faLock, faShield } from '@fortawesome/free-solid-svg-icons'
 import '../styles/auth.css'
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'http://localhost:10000'
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
