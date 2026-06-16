@@ -81,6 +81,7 @@ app.add_middleware(
         "http://localhost:4173",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://mindvarta-mental-health-assistant.onrender.com",
         "https://mindvarta-mental-health-assistant-2.onrender.com",
     ],
     allow_credentials=True,
@@ -224,9 +225,9 @@ async def signin(body: SignInRequest, request: Request, response: Response):
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite="none",
         max_age=COOKIE_MAX_AGE,
-        secure=False,
+        secure=True,
     )
 
     return {
