@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons'
 import '../styles/auth.css'
 
-const API_BASE_URL = 'http://localhost:10000'
+const API_BASE_URL = import.meta.env.VITE_API_URL
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
