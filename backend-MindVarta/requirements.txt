@@ -6,3 +6,4 @@ python-dotenv
 gtts
 psycopg2-binary
 bcrypt
+requests
