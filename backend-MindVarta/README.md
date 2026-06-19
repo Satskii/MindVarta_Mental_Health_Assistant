@@ -87,7 +87,10 @@ SMTP_USER=your_email@gmail.com
 SMTP_PASSWORD=your_gmail_app_password
 
 # Frontend URL (used in reset email link)
+# Local development:
 FRONTEND_URL=http://localhost:5173
+# Render/production: set this to your deployed frontend URL instead, for example:
+# FRONTEND_URL=https://your-frontend-service.onrender.com
 ```
 
 **5. Run the server**
