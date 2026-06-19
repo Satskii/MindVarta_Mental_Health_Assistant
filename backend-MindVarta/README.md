@@ -67,12 +67,27 @@ Go to your service → Overview tab → Allowed IP addresses → add `0.0.0.0/0`
 **4. Configure `.env`**
 ```
 GROQ_API_KEY=your_groq_api_key_here
-
+ 
 DB_HOST=your_aiven_host
 DB_PORT=16385
 DB_NAME=mind_talk_db
 DB_USER=avnadmin
 DB_PASSWORD=your_db_password
+
+# Option 1: SendGrid (Recommended for Render - works on free tier)
+# Get free API key at https://sendgrid.com (100 emails/day free)
+USE_SENDGRID=true
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+
+# Option 2: Gmail SMTP (Works locally, blocked on Render free tier)
+# Enable 2FA → generate App Password at myaccount.google.com/apppasswords
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_gmail_app_password
+
+# Frontend URL (used in reset email link)
+FRONTEND_URL=http://localhost:5173
 ```
 
 **5. Run the server**
