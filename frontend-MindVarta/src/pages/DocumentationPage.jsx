@@ -633,9 +633,6 @@ Start Command: uvicorn app:app --host 0.0.0.0 --port 10000
             <p>Go to <strong>Environment</strong> tab and add all required variables:</p>
             <pre className="code-block">{`# AI & LLM
 GROQ_API_KEY=your_groq_api_key
-AI_MODEL=llama-3.1-8b-instant
-TEMPERATURE=0.7
-MAX_TOKENS=1024
 
 # Database (Aiven PostgreSQL)
 DB_HOST=your-aiven-db.aivencloud.com
@@ -729,9 +726,6 @@ render logs <service-name>
 
 # Restart service
 render restart <service-name>
-
-# Check health
-curl https://mindvarta-mental-health-assistant.onrender.com/health
 
 # View deployment history
 render deployments list

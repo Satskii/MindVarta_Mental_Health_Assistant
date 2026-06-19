@@ -84,108 +84,189 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
 
 def fix_missing_spaces(text: str) -> str:
     """
-    Fix spacing issues in AI-generated text.
+    Fix spacing issues in AI-generated text using multiple strategies.
     Handles:
-    1. Words with spaces in the middle: "Im do ing" → "I'm doing"
-    2. Missing spaces between words: "companionand" → "companion and"
-    3. Extra spaces in contractions: "I m" → "I'm", "yo u" → "you"
+    1. Words with spaces in the middle: "f or" → "for"
+    2. Missing spaces between words: "wellthank" → "well thank"
+    3. Broken contractions: "I m" → "I'm", "youre" → "you're"
     """
     if not text:
         return text
     
-    # Fix broken contractions and common words first
-    # Common contractions that get split
-    contractions = {
+    # Step 1: Fix words that have incorrect spaces in the middle
+    # Pattern: single letter + space + rest of word
+    broken_words = {
+        r'\bf or\b': 'for',
+        r'\bt o\b': 'to',
+        r'\ba t\b': 'at',
+        r'\bi n\b': 'in',
+        r'\bo f\b': 'of',
+        r'\bo n\b': 'on',
+        r'\bi s\b': 'is',
+        r'\ba s\b': 'as',
+        r'\bb y\b': 'by',
         r'\bI m\b': "I'm",
-        r'\byo u\b': "you",
-        r'\byo ur\b': "your",
-        r'\bthe y\b': "they",
-        r'\bwe re\b': "we're",
-        r'\bhe s\b': "he's",
-        r'\bshe s\b': "she's",
-        r'\bit s\b': "it's",
-        r'\btha t\b': "that",
-        r'\bwha t\b': "what",
-        r'\bcan t\b': "can't",
-        r'\bdon t\b': "don't",
-        r'\bwon t\b': "won't",
+        r'\bI d\b': "I'd",
+        r'\bI ll\b': "I'll",
+        r'\bI ve\b': "I've",
+        r'\bc an\b': 'can',
+        r'\bc ant\b': "can't",
+        r'\bd o\b': 'do',
+        r'\bd ont\b': "don't",
+        r'\bw ill\b': 'will',
+        r'\bw ont\b': "won't",
+        r'\bw ith\b': 'with',
+        r'\bt hat\b': 'that',
+        r'\bt his\b': 'this',
+        r'\bt hey\b': 'they',
+        r'\bt heir\b': 'their',
+        r'\bt here\b': 'there',
+        r'\bw hat\b': 'what',
+        r'\bw hen\b': 'when',
+        r'\bw here\b': 'where',
+        r'\bw hy\b': 'why',
+        r'\bh ow\b': 'how',
+        r'\bh ave\b': 'have',
+        r'\bh ad\b': 'had',
+        r'\bs o\b': 'so',
+        r'\bm y\b': 'my',
+        r'\bm e\b': 'me',
+        r'\by ou\b': 'you',
+        r'\by our\b': 'your',
+        r'\bh e\b': 'he',
+        r'\bh er\b': 'her',
+        r'\bh is\b': 'his',
+        r'\bs he\b': 'she',
+        r'\bi t\b': 'it',
+        r'\bw e\b': 'we',
+        r'\bo ur\b': 'our',
+        r'\bsh are\b': 'share',
+        r'\bsh aring\b': 'sharing',
+        r'\bf eel\b': 'feel',
+        r'\bf eeling\b': 'feeling',
+        r'\bf eelings\b': 'feelings',
+    }
+    
+    for pattern, replacement in broken_words.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    # Step 2: Fix contractions that are missing apostrophes
+    contractions = {
+        r'\bIm\b': "I'm",
         r'\bId\b': "I'd",
         r'\bIll\b': "I'll",
         r'\bIve\b': "I've",
-        r'\byou re\b': "you're",
-        r'\byou ve\b': "you've",
-        r'\byou ll\b': "you'll",
-        r'\byou d\b': "you'd",
-        r'\btha nk\b': "thank",
-        r'\bth ink\b': "think",
-        r'\bth is\b': "this",
-        r'\bth at\b': "that",
-        r'\bth ere\b': "there",
-        r'\bth ey\b': "they",
-        r'\bth eir\b': "their",
-        r'\bwi th\b': "with",
-        r'\babo ut\b': "about",
-        r'\bsometh ing\b': "something",
-        r'\banyo ne\b': "anyone",
-        r'\banywh ere\b': "anywhere",
-        r'\banyth ing\b': "anything",
-        r'\beveryo ne\b': "everyone",
-        r'\bsomeo ne\b': "someone",
-        r'\brel ated\b': "related",
-        r'\bsh are\b': "share",
-        r'\bfe el\b': "feel",
-        r'\bfe eling\b': "feeling",
-        r'\bfeel ings\b': "feelings",
-        r'\bdo ing\b': "doing",
-        r'\bask ing\b': "asking",
-        r'\blist en\b': "listen",
-        r'\bsupp ort\b': "support",
-        r'\bquest ions\b': "questions",
-        r'\btop ics\b': "topics",
-        r'\bdisc uss\b': "discuss",
-        r'\bment al\b': "mental",
-        r'\bhe alth\b': "health",
-        r'\bcompani on\b': "companion",
-        r'\bdesign ed\b': "designed",
-        r'\bprov ide\b': "provide",
-        r'\bjudg ment\b': "judgment",
-        r'\bsp ace\b': "space",
-        r'\btho ughts\b': "thoughts",
-        r'\bspecif ic\b': "specific",
-        r'\bissu es\b': "issues",
-        r'\bconc erns\b': "concerns",
-        r'\bPerh aps\b': "Perhaps",
-        r'\brelat ionships\b': "relationships",
-        r'\bsimpl y\b': "simply",
-        r'\bwe ll\b': "well",
-        r'\bbe ing\b': "being",
-        r'\bwellth ank\b': "well thank",
-        r'\btalk abo\b': "talk abo",
-        r'\bNam aste\b': "Namaste",
+        r'\byoure\b': "you're",
+        r'\byoull\b': "you'll",
+        r'\byouve\b': "you've",
+        r'\byoud\b': "you'd",
+        r'\btheyre\b': "they're",
+        r'\btheyll\b': "they'll",
+        r'\btheyve\b': "they've",
+        r'\btheyd\b': "they'd",
+        r'\bwere\b': "we're",
+        r'\bwell\b': "we'll",
+        r'\bweve\b': "we've",
+        r'\bwed\b': "we'd",
+        r'\bhes\b': "he's",
+        r'\bhell\b': "he'll",
+        r'\bhed\b': "he'd",
+        r'\bshes\b': "she's",
+        r'\bshe ll\b': "she'll",
+        r'\bshed\b': "she'd",
+        r'\bits\b': "it's",
+        r'\bitll\b': "it'll",
+        r'\bthats\b': "that's",
+        r'\btheres\b': "there's",
+        r'\bwhats\b': "what's",
+        r'\bwheres\b': "where's",
+        r'\bwhos\b': "who's",
+        r'\bhows\b': "how's",
+        r'\bwhos\b': "who's",
+        r'\bcant\b': "can't",
+        r'\bwont\b': "won't",
+        r'\bdont\b': "don't",
+        r'\bdoesnt\b': "doesn't",
+        r'\bdidnt\b': "didn't",
+        r'\bhasnt\b': "hasn't",
+        r'\bhavent\b': "haven't",
+        r'\bhadnt\b': "hadn't",
+        r'\bisnt\b': "isn't",
+        r'\barent\b': "aren't",
+        r'\bwasnt\b': "wasn't",
+        r'\bwerent\b': "weren't",
+        r'\bcouldnt\b': "couldn't",
+        r'\bwouldnt\b': "wouldn't",
+        r'\bshouldnt\b': "shouldn't",
     }
     
     for pattern, replacement in contractions.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    # Fix words that are incorrectly joined (no space)
-    # Pattern: lowercase letter followed immediately by uppercase letter
-    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    # Step 3: Fix common word combinations that are missing spaces
+    # Pattern: word ending + word beginning (e.g., "wellthank" → "well thank")
+    common_joins = {
+        r'\b(well)(thank)\b': r'\1 \2',
+        r'\b(you)(so)\b': r'\1 \2',
+        r'\b(you)(how)\b': r'\1 \2',
+        r'\b(you)(what)\b': r'\1 \2',
+        r'\b(you)(where)\b': r'\1 \2',
+        r'\b(you)(when)\b': r'\1 \2',
+        r'\b(and)(I)\b': r'\1 \2',
+        r'\b(and)(you)\b': r'\1 \2',
+        r'\b(and)(the)\b': r'\1 \2',
+        r'\b(or)(you)\b': r'\1 \2',
+        r'\b(or)(I)\b': r'\1 \2',
+        r'\b(but)(I)\b': r'\1 \2',
+        r'\b(but)(you)\b': r'\1 \2',
+        r'\b(so)(I)\b': r'\1 \2',
+        r'\b(so)(you)\b': r'\1 \2',
+        r'\b(if)(you)\b': r'\1 \2',
+        r'\b(if)(I)\b': r'\1 \2',
+    }
     
-    # Fix common word endings directly followed by common starting words
-    # e.g., "companionand" → "companion and", "friendbut" → "friend but"
-    common_words = r'(and|but|the|is|are|was|were|in|to|of|or|for|with|by|from|as|be|an|at|if|that|this|it|Im|Id|Ill)'
-    text = re.sub(rf'([a-z])({common_words})\b', r'\1 \2', text, flags=re.IGNORECASE)
+    for pattern, replacement in common_joins.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    # Fix "Im" specifically (very common)
-    text = re.sub(r'\bIm\b', "I'm", text)
-    text = re.sub(r'\bId\b', "I'd", text)
-    text = re.sub(r'\bIll\b', "I'll", text)
-    text = re.sub(r'\bIve\b', "I've", text)
+    # Step 4: Generic pattern - lowercase letter followed immediately by another word
+    # This catches patterns like "youso", "wellthank", etc.
+    # Look for [word ending with lowercase][word starting with lowercase]
+    text = re.sub(r'([a-z]{3,})([a-z]{2,})\b', lambda m: 
+                  m.group(1) + ' ' + m.group(2) if is_likely_two_words(m.group(1), m.group(2)) else m.group(0), 
+                  text)
     
-    # Clean up any multiple spaces that might have been created
+    # Step 5: Fix "youhows" specifically (you + how's)
+    text = re.sub(r'\byouhows\b', "you how's", text, flags=re.IGNORECASE)
+    text = re.sub(r'\byouhow\b', 'you how', text, flags=re.IGNORECASE)
+    
+    # Step 6: Clean up multiple spaces
     text = re.sub(r'\s+', ' ', text)
     
     return text.strip()
+
+
+def is_likely_two_words(word1: str, word2: str) -> bool:
+    """
+    Heuristic to determine if two concatenated strings are likely two separate words.
+    Returns True if they should be split with a space.
+    """
+    # Common word endings that often get joined
+    common_endings = ['well', 'you', 'and', 'but', 'or', 'so', 'if', 'the', 'my', 'your', 'his', 'her', 'their', 'our']
+    # Common word beginnings that often get joined
+    common_beginnings = ['thank', 'how', 'what', 'where', 'when', 'why', 'who', 'can', 'so', 'to', 'for', 'and', 'but', 'or']
+    
+    word1_lower = word1.lower()
+    word2_lower = word2.lower()
+    
+    # Check if word1 is a common ending and word2 is a common beginning
+    if word1_lower in common_endings or word2_lower in common_beginnings:
+        return True
+    
+    # If both words are reasonably long (3+ chars each), likely separate words
+    if len(word1) >= 3 and len(word2) >= 3:
+        return True
+    
+    return False
     
     # Pattern 3: Fix doubled words accidentally joined (rare but possible)
     # e.g., "veryvery" shouldn't occur, but if it does, we won't fix it to avoid false positives
