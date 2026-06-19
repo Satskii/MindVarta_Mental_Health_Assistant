@@ -84,20 +84,108 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
 
 def fix_missing_spaces(text: str) -> str:
     """
-    Fix common cases where spaces are missing between words.
-    Handles: "youa" → "you a", "companionand" → "companion and", etc.
+    Fix spacing issues in AI-generated text.
+    Handles:
+    1. Words with spaces in the middle: "Im do ing" → "I'm doing"
+    2. Missing spaces between words: "companionand" → "companion and"
+    3. Extra spaces in contractions: "I m" → "I'm", "yo u" → "you"
     """
     if not text:
         return text
     
-    # Pattern 1: lowercase word directly followed by lowercase word starting with a vowel
-    # e.g., "youa" → "you a", "thea" → "the a", "anda" → "and a"
-    text = re.sub(r'([a-z]{2,})([aeiou][a-z]+)', r'\1 \2', text)
+    # Fix broken contractions and common words first
+    # Common contractions that get split
+    contractions = {
+        r'\bI m\b': "I'm",
+        r'\byo u\b': "you",
+        r'\byo ur\b': "your",
+        r'\bthe y\b': "they",
+        r'\bwe re\b': "we're",
+        r'\bhe s\b': "he's",
+        r'\bshe s\b': "she's",
+        r'\bit s\b': "it's",
+        r'\btha t\b': "that",
+        r'\bwha t\b': "what",
+        r'\bcan t\b': "can't",
+        r'\bdon t\b': "don't",
+        r'\bwon t\b': "won't",
+        r'\bId\b': "I'd",
+        r'\bIll\b': "I'll",
+        r'\bIve\b': "I've",
+        r'\byou re\b': "you're",
+        r'\byou ve\b': "you've",
+        r'\byou ll\b': "you'll",
+        r'\byou d\b': "you'd",
+        r'\btha nk\b': "thank",
+        r'\bth ink\b': "think",
+        r'\bth is\b': "this",
+        r'\bth at\b': "that",
+        r'\bth ere\b': "there",
+        r'\bth ey\b': "they",
+        r'\bth eir\b': "their",
+        r'\bwi th\b': "with",
+        r'\babo ut\b': "about",
+        r'\bsometh ing\b': "something",
+        r'\banyo ne\b': "anyone",
+        r'\banywh ere\b': "anywhere",
+        r'\banyth ing\b': "anything",
+        r'\beveryo ne\b': "everyone",
+        r'\bsomeo ne\b': "someone",
+        r'\brel ated\b': "related",
+        r'\bsh are\b': "share",
+        r'\bfe el\b': "feel",
+        r'\bfe eling\b': "feeling",
+        r'\bfeel ings\b': "feelings",
+        r'\bdo ing\b': "doing",
+        r'\bask ing\b': "asking",
+        r'\blist en\b': "listen",
+        r'\bsupp ort\b': "support",
+        r'\bquest ions\b': "questions",
+        r'\btop ics\b': "topics",
+        r'\bdisc uss\b': "discuss",
+        r'\bment al\b': "mental",
+        r'\bhe alth\b': "health",
+        r'\bcompani on\b': "companion",
+        r'\bdesign ed\b': "designed",
+        r'\bprov ide\b': "provide",
+        r'\bjudg ment\b': "judgment",
+        r'\bsp ace\b': "space",
+        r'\btho ughts\b': "thoughts",
+        r'\bspecif ic\b': "specific",
+        r'\bissu es\b': "issues",
+        r'\bconc erns\b': "concerns",
+        r'\bPerh aps\b': "Perhaps",
+        r'\brelat ionships\b': "relationships",
+        r'\bsimpl y\b': "simply",
+        r'\bwe ll\b': "well",
+        r'\bbe ing\b': "being",
+        r'\bwellth ank\b': "well thank",
+        r'\btalk abo\b': "talk abo",
+        r'\bNam aste\b': "Namaste",
+    }
     
-    # Pattern 2: common word endings directly followed by common starting words
+    for pattern, replacement in contractions.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    # Fix words that are incorrectly joined (no space)
+    # Pattern: lowercase letter followed immediately by uppercase letter
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    
+    # Fix common word endings directly followed by common starting words
     # e.g., "companionand" → "companion and", "friendbut" → "friend but"
-    common_words = r'\b(and|but|the|is|are|was|were|in|to|of|or|for|with|by|from|as|be|an|at|if|that|this|it)'
+    common_words = r'(and|but|the|is|are|was|were|in|to|of|or|for|with|by|from|as|be|an|at|if|that|this|it|Im|Id|Ill)'
     text = re.sub(rf'([a-z])({common_words})\b', r'\1 \2', text, flags=re.IGNORECASE)
+    
+    # Fix "Im" specifically (very common)
+    text = re.sub(r'\bIm\b', "I'm", text)
+    text = re.sub(r'\bId\b', "I'd", text)
+    text = re.sub(r'\bIll\b', "I'll", text)
+    text = re.sub(r'\bIve\b', "I've", text)
+    
+    # Clean up any multiple spaces that might have been created
+    text = re.sub(r'\s+', ' ', text)
+    
+    return text.strip()
     
     # Pattern 3: Fix doubled words accidentally joined (rare but possible)
     # e.g., "veryvery" shouldn't occur, but if it does, we won't fix it to avoid false positives
