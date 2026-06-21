@@ -35,7 +35,7 @@ export function ChatProvider({ children }) {
   
   const [conversations, setConversations] = useState([])
   const [activeChatId, setActiveChatId] = useState(null)
-  const [currentChatId, setCurrentChatId] = useState(null) // Track the most recent/active chat
+  const [, setCurrentChatId] = useState(null) // Track the most recent/active chat
   const [messages, setMessages] = useState([{
     id: 1,
     role: 'assistant',
@@ -54,6 +54,8 @@ export function ChatProvider({ children }) {
   const [crisisLevel, setCrisisLevel] = useState(null)
   const [showCrisisModal, setShowCrisisModal] = useState(false)
   const convIdRef = useRef(null)
+  const activeChatIdRef = useRef(null)
+  const currentChatIdRef = useRef(null)
 
   // Update welcome message when language changes
   useEffect(() => {
@@ -71,8 +73,8 @@ export function ChatProvider({ children }) {
 
   const clearChat = () => {
     setConversations([])
-    setActiveChatId(null)
-    setCurrentChatId(null)
+    setActiveConversation(null)
+    setCurrentConversation(null)
     setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME_MESSAGES[language] || WELCOME_MESSAGES.english, timestamp: new Date() }])
     setMessagesUsed(0)
     setLimitReached(false)
@@ -81,7 +83,17 @@ export function ChatProvider({ children }) {
     setCrisisDetected(false)
     setCrisisLevel(null)
     setShowCrisisModal(false)
-    convIdRef.current = null
+  }
+
+  const setActiveConversation = (id) => {
+    setActiveChatId(id)
+    activeChatIdRef.current = id
+    convIdRef.current = id
+  }
+
+  const setCurrentConversation = (id) => {
+    setCurrentChatId(id)
+    currentChatIdRef.current = id
   }
 
   const addMessage = (msg) => {
@@ -94,7 +106,9 @@ export function ChatProvider({ children }) {
       if (!res.ok) return
       const data = await res.json()
       setConversations(data.conversations || [])
-    } catch (_) {}
+    } catch (error) {
+      console.error('Error loading conversations:', error)
+    }
   }
 
   const startNewChat = async (chatLanguage = language) => {
@@ -104,16 +118,17 @@ export function ChatProvider({ children }) {
         credentials: 'include',
       })
       const data = await res.json()
-      convIdRef.current = data.conv_id
-      setActiveChatId(data.conv_id)
-      setCurrentChatId(data.conv_id) // Set as the current/active chat
+      setActiveConversation(data.conv_id)
+      setCurrentConversation(data.conv_id) // Set as the current/active chat
       setIsViewingPreviousChat(false) // Not viewing previous chat anymore
       setConversations(prev => [
         { conv_id: data.conv_id, title: data.title, msg_count: 0 },
         ...prev,
       ])
-    } catch (_) {
-      convIdRef.current = null
+    } catch (error) {
+      console.error('Error starting new chat:', error)
+      setActiveConversation(null)
+      setCurrentConversation(null)
     }
     setMessages([{
       id: Date.now(),
@@ -161,7 +176,14 @@ export function ChatProvider({ children }) {
         throw new Error(errorDetail.error || errorDetail.detail || 'Failed to get response from server')
       }
 
-      if (data.conv_id) convIdRef.current = data.conv_id
+      if (data.conv_id) {
+        setActiveConversation(data.conv_id)
+        setCurrentConversation(data.conv_id)
+        setConversations(prev => {
+          if (prev.some(conv => conv.conv_id === data.conv_id)) return prev
+          return [{ conv_id: data.conv_id, title: data.title || 'New Conversation', msg_count: 0 }, ...prev]
+        })
+      }
       if (data.messages_used !== undefined) setMessagesUsed(data.messages_used)
       if (data.messages_remaining === 0) setLimitReached(true)
 
@@ -188,10 +210,11 @@ export function ChatProvider({ children }) {
   }
 
   const selectConversation = (id) => {
-    setActiveChatId(id)
-    convIdRef.current = id
-    setReadOnly(true)
-    setIsViewingPreviousChat(id !== currentChatId) // Set to true if viewing a different chat than current
+    const viewingPrevious = id !== currentChatIdRef.current
+
+    setActiveConversation(id)
+    setReadOnly(viewingPrevious)
+    setIsViewingPreviousChat(viewingPrevious) // Set to true if viewing a different chat than current
     
     // Reset crisis states when viewing previous chat
     setCrisisDetected(false)
@@ -217,9 +240,9 @@ export function ChatProvider({ children }) {
   }
 
   const returnToCurrentChat = () => {
-    if (currentChatId) {
-      setActiveChatId(currentChatId)
-      convIdRef.current = currentChatId
+    const currentId = currentChatIdRef.current
+    if (currentId) {
+      setActiveConversation(currentId)
       setIsViewingPreviousChat(false)
       setReadOnly(false)
       
@@ -229,7 +252,7 @@ export function ChatProvider({ children }) {
       setShowCrisisModal(false)
       
       // Fetch messages for the current conversation
-      fetch(`${API_BASE_URL}/conversations/${currentChatId}/messages`, { credentials: 'include' })
+      fetch(`${API_BASE_URL}/conversations/${currentId}/messages`, { credentials: 'include' })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data?.messages) {
@@ -245,8 +268,7 @@ export function ChatProvider({ children }) {
         .catch(err => console.error('Error loading current conversation messages:', err))
     } else {
       // No current chat exists, reset to welcome screen
-      setActiveChatId(null)
-      convIdRef.current = null
+      setActiveConversation(null)
       setIsViewingPreviousChat(false)
       setReadOnly(false)
       setCrisisDetected(false)
@@ -268,31 +290,31 @@ export function ChatProvider({ children }) {
 
       setConversations(prev => prev.filter(c => c.conv_id !== convId))
 
-      const deletedWasActive = activeChatId === convId
-      const deletedWasCurrent = currentChatId === convId
+      const deletedWasActive = activeChatIdRef.current === convId
+      const deletedWasCurrent = currentChatIdRef.current === convId
 
       // Case 1: Deleted chat was the current active chat
       if (deletedWasCurrent) {
-        setCurrentChatId(null)
-        convIdRef.current = null
+        setCurrentConversation(null)
+        setActiveConversation(null)
         setReadOnly(false)
         setIsViewingPreviousChat(false)
         setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME_MESSAGES[language] || WELCOME_MESSAGES.english, timestamp: new Date() }])
         setMessagesUsed(0)
         setLimitReached(false)
-        setActiveChatId(null)
       } 
       // Case 2: Deleted chat was being viewed (but not the current active chat)
       else if (deletedWasActive) {
         // If there's a current chat, switch back to it
-        if (currentChatId) {
-          setActiveChatId(currentChatId)
-          convIdRef.current = currentChatId
+        const currentId = currentChatIdRef.current
+
+        if (currentId) {
+          setActiveConversation(currentId)
           setReadOnly(false)
           setIsViewingPreviousChat(false)
 
           try {
-            const msgRes = await fetch(`${API_BASE_URL}/conversations/${currentChatId}/messages`, { credentials: 'include' })
+            const msgRes = await fetch(`${API_BASE_URL}/conversations/${currentId}/messages`, { credentials: 'include' })
             const data = msgRes.ok ? await msgRes.json() : null
             if (data?.messages) {
               const formattedMessages = data.messages.map((msg, idx) => ({
@@ -308,8 +330,7 @@ export function ChatProvider({ children }) {
           }
         } else {
           // No current chat, reset to welcome screen
-          setActiveChatId(null)
-          convIdRef.current = null
+          setActiveConversation(null)
           setReadOnly(false)
           setIsViewingPreviousChat(false)
           setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME_MESSAGES[language] || WELCOME_MESSAGES.english, timestamp: new Date() }])
