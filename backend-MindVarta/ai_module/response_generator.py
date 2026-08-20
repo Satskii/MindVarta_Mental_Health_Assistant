@@ -15,10 +15,10 @@ from ai_module.prompts.language_prompts import PromptManagerV3
 
 prompt_manager = PromptManagerV3()
 
-MAX_PROMPT_TOKENS = 2600
-MAX_RESPONSE_TOKENS = 300
-MAX_HISTORY_MESSAGES = 4
-MAX_MEMORY_CHARS = 350
+MAX_PROMPT_TOKENS = 2000
+MAX_RESPONSE_TOKENS = 250  # Aggressively reduced to ensure complete responses with proper spacing
+MAX_HISTORY_MESSAGES = 3  # Reduced to save token budget for response
+MAX_MEMORY_CHARS = 250
 
 
 def estimate_text_tokens(text: str) -> int:
@@ -84,17 +84,23 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
 
 def fix_missing_spaces(text: str) -> str:
     """
-    Fix spacing issues in AI-generated text using multiple strategies.
+    Aggressively fix spacing issues in AI-generated text.
     Handles:
-    1. Words with spaces in the middle: "f or" → "for"
-    2. Missing spaces between words: "wellthank" → "well thank"
-    3. Broken contractions: "I m" → "I'm", "youre" → "you're"
+    1. Words concatenated without spaces: "painfuland" → "painful and"
+    2. Broken words with spaces: "f or" → "for"
+    3. Missing spaces after punctuation: "it.Talking" → "it. Talking"
+    4. Broken contractions: "I m" → "I'm"
     """
     if not text:
         return text
     
-    # Step 1: Fix words that have incorrect spaces in the middle
-    # Pattern: single letter + space + rest of word
+    # Step 1: Fix missing spaces after punctuation
+    text = re.sub(r'([.!?,;:])([A-Z])', r'\1 \2', text)  # Add space after punctuation before capital letter
+    text = re.sub(r'([.!?,;:])([a-z])', r'\1 \2', text)  # Add space after punctuation before lowercase
+    text = re.sub(r'—([A-Za-z])', r'— \1', text)  # Add space after em dash
+    text = re.sub(r'-([A-Za-z])', r'- \1', text)  # Add space after hyphen (when used as separator)
+    
+    # Step 2: Fix words that have incorrect spaces in the middle (broken words)
     broken_words = {
         r'\bf or\b': 'for',
         r'\bt o\b': 'to',
@@ -140,17 +146,14 @@ def fix_missing_spaces(text: str) -> str:
         r'\bi t\b': 'it',
         r'\bw e\b': 'we',
         r'\bo ur\b': 'our',
-        r'\bsh are\b': 'share',
-        r'\bsh aring\b': 'sharing',
-        r'\bf eel\b': 'feel',
-        r'\bf eeling\b': 'feeling',
-        r'\bf eelings\b': 'feelings',
+        r'\bse\b': 'these',  # Common typo: "se feelings" → "these feelings"
+        r'\bth e\b': 'the',
     }
     
     for pattern, replacement in broken_words.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    # Step 2: Fix contractions that are missing apostrophes
+    # Step 3: Fix contractions that are missing apostrophes
     contractions = {
         r'\bIm\b': "I'm",
         r'\bId\b': "I'd",
@@ -172,7 +175,6 @@ def fix_missing_spaces(text: str) -> str:
         r'\bhell\b': "he'll",
         r'\bhed\b': "he'd",
         r'\bshes\b': "she's",
-        r'\bshe ll\b': "she'll",
         r'\bshed\b': "she'd",
         r'\bits\b': "it's",
         r'\bitll\b': "it'll",
@@ -182,7 +184,6 @@ def fix_missing_spaces(text: str) -> str:
         r'\bwheres\b': "where's",
         r'\bwhos\b': "who's",
         r'\bhows\b': "how's",
-        r'\bwhos\b': "who's",
         r'\bcant\b': "can't",
         r'\bwont\b': "won't",
         r'\bdont\b': "don't",
@@ -203,78 +204,178 @@ def fix_missing_spaces(text: str) -> str:
     for pattern, replacement in contractions.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    # Step 3: Fix common word combinations that are missing spaces
-    # Pattern: word ending + word beginning (e.g., "wellthank" → "well thank")
-    common_joins = {
-        r'\b(well)(thank)\b': r'\1 \2',
-        r'\b(you)(so)\b': r'\1 \2',
-        r'\b(you)(how)\b': r'\1 \2',
-        r'\b(you)(what)\b': r'\1 \2',
-        r'\b(you)(where)\b': r'\1 \2',
-        r'\b(you)(when)\b': r'\1 \2',
-        r'\b(and)(I)\b': r'\1 \2',
-        r'\b(and)(you)\b': r'\1 \2',
-        r'\b(and)(the)\b': r'\1 \2',
-        r'\b(or)(you)\b': r'\1 \2',
-        r'\b(or)(I)\b': r'\1 \2',
-        r'\b(but)(I)\b': r'\1 \2',
-        r'\b(but)(you)\b': r'\1 \2',
-        r'\b(so)(I)\b': r'\1 \2',
-        r'\b(so)(you)\b': r'\1 \2',
-        r'\b(if)(you)\b': r'\1 \2',
-        r'\b(if)(I)\b': r'\1 \2',
-    }
+    # Step 4: AGGRESSIVE - Fix concatenated words (most common issue)
+    # Pattern: word ending + word beginning (e.g., "painfuland" → "painful and")
+    common_word_boundaries = [
+        # Common words that get concatenated
+        (r'painful(and|or|but|so|if|that|which|when|where)', r'painful \1'),
+        (r'sad(and|or|but|so|if|that|which|when|where)', r'sad \1'),
+        (r'shock(and|or|but|so|if|that|which|when|where)', r'shock \1'),
+        (r'confusion(and|or|but|so|if|that|which|when|where)', r'confusion \1'),
+        (r'sadness(and|or|but|so|if|that|which|when|where)', r'sadness \1'),
+        (r'anger(and|or|but|so|if|that|which|when|where)', r'anger \1'),
+        (r'numbness(and|or|but|so|if|that|which|when|where)', r'numbness \1'),
+        (r'memories(and|or|but|so|if|that|which|when|expressing|sharing)', r'memories \1'),
+        (r'expressing(and|or|but|so|your|my|their)', r'expressing \1'),
+        (r'counsel or\b', 'counselor'),  # Fix specific typo
+        (r'pho to\b', 'photo'),  # Fix specific typo
+        (r'hon or\b', 'honor'),  # Fix specific typo
+        
+        # Common endings that get joined to next word
+        (r'(it|them|him|her|me|you|us)(how|what|where|when|why|who)', r'\1 \2'),
+        (r'(can|will|should|could|would|may|might)(help|be|have|make)', r'\1 \2'),
+        (r'(and|or|but)(I|you|he|she|it|they|we)', r'\1 \2'),
+        (r'(the|a|an)(se|these|those|this|that)', r'\1 \2'),
+        
+        # Common prefixes that get joined
+        (r'(un|re|pre|dis|mis|over|under)(able|willing|expected|appropriate)', r'\1\2'),
+    ]
     
-    for pattern, replacement in common_joins.items():
+    for pattern, replacement in common_word_boundaries:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    # Step 4: Generic pattern - lowercase letter followed immediately by another word
-    # This catches patterns like "youso", "wellthank", etc.
-    # Look for [word ending with lowercase][word starting with lowercase]
-    text = re.sub(r'([a-z]{3,})([a-z]{2,})\b', lambda m: 
-                  m.group(1) + ' ' + m.group(2) if is_likely_two_words(m.group(1), m.group(2)) else m.group(0), 
-                  text)
+    # Step 5: Generic pattern - find likely concatenated words
+    # Look for lowercase letter followed immediately by common word starters
+    common_starters = ['and', 'or', 'but', 'so', 'if', 'that', 'which', 'when', 'where', 'who', 'how', 'what', 
+                       'the', 'a', 'an', 'to', 'for', 'with', 'from', 'about', 'after', 'before']
     
-    # Step 5: Fix "youhows" specifically (you + how's)
-    text = re.sub(r'\byouhows\b', "you how's", text, flags=re.IGNORECASE)
-    text = re.sub(r'\byouhow\b', 'you how', text, flags=re.IGNORECASE)
+    for starter in common_starters:
+        # Match word ending + starter (e.g., "painfuland" → "painful and")
+        pattern = r'([a-z]{3,})(' + starter + r')\b'
+        text = re.sub(pattern, r'\1 \2', text, flags=re.IGNORECASE)
     
-    # Step 6: Clean up multiple spaces
+    # Step 6: Fix specific common concatenations from the error log
+    specific_fixes = {
+        'painfuland': 'painful and',
+        'sadnessshock': 'sadness shock',
+        'sadnessshockconfusion': 'sadness shock confusion',
+        'shockconfusion': 'shock confusion',
+        'sadness shock confusion': 'sadness, shock, confusion',  # Add commas for list
+        'overwhelmedsad': 'overwhelmed, sad',
+        'sadconfused': 'sad, confused',
+        'overwhelmedsadconfused': 'overwhelmed, sad, confused',
+        'counsel or': 'counselor',
+        'pho to': 'photo',
+        'hon or': 'honor',
+        'se feelings': 'these feelings',
+        'memoriesexpressing': 'memories, expressing',
+        'itsharing': 'it, sharing',
+        'itha': 'it ha',
+        'friendclose': 'friend, close',
+        'memberclose': 'member, close',
+    }
+    
+    for wrong, correct in specific_fixes.items():
+        text = text.replace(wrong, correct)
+    
+    # Step 7: Clean up multiple spaces
     text = re.sub(r'\s+', ' ', text)
     
     return text.strip()
 
 
-def is_likely_two_words(word1: str, word2: str) -> bool:
+def enforce_response_length_and_format(text: str, max_words: int = 60) -> str:
     """
-    Heuristic to determine if two concatenated strings are likely two separate words.
-    Returns True if they should be split with a space.
+    AGGRESSIVELY enforces response length and format rules.
+    Strips ALL formatting and truncates to conversational length.
     """
-    # Common word endings that often get joined
-    common_endings = ['well', 'you', 'and', 'but', 'or', 'so', 'if', 'the', 'my', 'your', 'his', 'her', 'their', 'our']
-    # Common word beginnings that often get joined
-    common_beginnings = ['thank', 'how', 'what', 'where', 'when', 'why', 'who', 'can', 'so', 'to', 'for', 'and', 'but', 'or']
+    if not text:
+        return text
     
-    word1_lower = word1.lower()
-    word2_lower = word2.lower()
+    # Step 1: Remove ALL markdown and formatting
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # Remove **bold**
+    text = re.sub(r'\*([^*]+)\*', r'\1', text)      # Remove *italic*
+    text = re.sub(r'_([^_]+)_', r'\1', text)        # Remove _underscores_
+    text = re.sub(r'`([^`]+)`', r'\1', text)        # Remove `code`
     
-    # Check if word1 is a common ending and word2 is a common beginning
-    if word1_lower in common_endings or word2_lower in common_beginnings:
-        return True
+    # Step 2: Remove lists and numbered items
+    text = re.sub(r'^\s*\d+\.\s*', '', text, flags=re.MULTILINE)  # Remove "1. ", "2. ", etc.
+    text = re.sub(r'^\s*[-*•]\s*', '', text, flags=re.MULTILINE)  # Remove bullet points
+    text = re.sub(r'\n\s*\d+\.\s*', ' ', text)  # Replace mid-text numbered items with space
+    text = re.sub(r'\n\s*[-*•]\s*', ' ', text)  # Replace mid-text bullets with space
     
-    # If both words are reasonably long (3+ chars each), likely separate words
-    if len(word1) >= 3 and len(word2) >= 3:
-        return True
+    # Step 3: Remove "Here are" type phrases that introduce lists
+    list_intros = [
+        r'Here are (some|a few|several|many|\d+) (steps|ways|things|ideas|suggestions|tips)[^.!?]*',
+        r'Here.s (what|how) you can[^.!?]*',
+        r'Try these[^.!?]*',
+        r'Consider the following[^.!?]*',
+        r'I suggest[^.!?]*:',
+        r'You (might|could|can) try[^.!?]*:',
+        r'(Some|A few|Several) (things|steps|ways) (that|to) (might|may|could|can)[^.!?]*',
+        r'(gentle|simple) (steps|ways|things) (that|to)[^.!?]*',
+    ]
+    for pattern in list_intros:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
     
-    return False
+    # Step 4: Remove headers and section markers
+    text = re.sub(r'#+\s+', '', text)  # Remove markdown headers
+    text = re.sub(r'```[^`]*```', '', text)  # Remove code blocks
     
-    # Pattern 3: Fix doubled words accidentally joined (rare but possible)
-    # e.g., "veryvery" shouldn't occur, but if it does, we won't fix it to avoid false positives
+    # Step 5: Clean up excess whitespace and newlines
+    text = re.sub(r'\n+', ' ', text)  # Replace newlines with spaces
+    text = re.sub(r'\s+', ' ', text)  # Collapse multiple spaces
+    text = text.strip()
     
-    # Clean up any multiple spaces that might have been created
-    text = re.sub(r'\s+', ' ', text)
+    # Step 6: If text still looks like it has list remnants, remove them
+    # Pattern: ends with number followed by period (likely start of list)
+    text = re.sub(r'\s+\d+\.\s*$', '.', text)
     
-    return text.strip()
+    # Step 7: Split into sentences and limit
+    sentences = re.split(r'([.!?]+\s+)', text)
+    
+    result = ""
+    word_count = 0
+    sentence_count = 0
+    
+    for i in range(0, len(sentences), 2):
+        sentence = sentences[i].strip()
+        if not sentence:
+            continue
+        
+        # Skip sentences that are clearly list items or fragments
+        if re.match(r'^\d+\.?\s*\w', sentence):  # Starts with number
+            continue
+        if len(sentence) < 5:  # Too short to be meaningful
+            continue
+            
+        punctuation = sentences[i + 1] if i + 1 < len(sentences) else ""
+        sentence_words = len(sentence.split())
+        
+        # Stop if we'd exceed limits
+        if word_count + sentence_words > max_words and word_count > 10:
+            break
+        if sentence_count >= 3:  # Max 3 sentences
+            break
+        
+        # Add sentence
+        if result:
+            result += " " + sentence + punctuation.strip()
+        else:
+            result = sentence + punctuation.strip()
+        
+        word_count += sentence_words
+        sentence_count += 1
+    
+    # Step 8: Ensure we have something
+    if not result or len(result) < 20:
+        # Take first 60 words of cleaned text as fallback
+        words = text.split()[:60]
+        result = ' '.join(words)
+    
+    # Step 9: Clean up and ensure proper ending
+    result = result.strip()
+    
+    # Remove trailing incomplete sentences or list markers
+    result = re.sub(r'\s+\d+\.\s*$', '.', result)
+    result = re.sub(r'[:-]\s*$', '.', result)  # Remove trailing colons/dashes
+    
+    # Ensure ends with punctuation
+    if result and result[-1] not in '.!?':
+        # If ends mid-word or looks incomplete, add period
+        result += '.'
+    
+    return result
 
 
 # ─────────────────────────────────────────────────────────────
@@ -370,6 +471,12 @@ def extract_response_and_summary(raw_text: str) -> tuple:
         actual_response = actual_response.replace('\\\"', '"')
         actual_response = actual_response.replace('\\"', '"')
         actual_response = actual_response.replace('\\\\', '\\')
+        
+        # CRITICAL: Enforce length and format rules
+        actual_response = enforce_response_length_and_format(actual_response, max_words=60)
+        
+        # Fix ALL spacing issues with ultra-aggressive fix
+        actual_response = fix_missing_spaces(actual_response)
     else:
         # If regex extraction also fails, try to find content before any JSON-like structure
         # Remove anything that looks like JSON metadata from the response
@@ -403,7 +510,7 @@ def extract_response_and_summary(raw_text: str) -> tuple:
     if not summarize_context:
         summarize_context = generate_fallback_summary(actual_response)
 
-    # Fix missing spaces in the response before returning
+    # Fix ALL spacing issues before returning
     actual_response = fix_missing_spaces(actual_response)
     return actual_response, summarize_context
 
@@ -682,11 +789,17 @@ def generate_response(
         })
 
     # ── LLM call ─────────────────────────────────────────────
+    # Special handling for openai/gpt-oss-120b model which requires reasoning_effort parameter
+    extra_params = {}
+    if AI_MODEL == "openai/gpt-oss-120b":
+        extra_params["reasoning_effort"] = "medium"  # Use "low" for faster, shorter responses
+    
     completion = client.chat.completions.create(
         model=AI_MODEL,
         messages=messages,
         temperature=TEMPERATURE,
-        max_tokens=min(MAX_TOKENS, MAX_RESPONSE_TOKENS)
+        max_tokens=min(MAX_TOKENS, MAX_RESPONSE_TOKENS),
+        **extra_params
     )
 
     raw_output = completion.choices[0].message.content.strip()
@@ -705,6 +818,13 @@ def generate_response(
 
     # ── Extract response ──────────────────────────────────────
     actual_response, summarize_context = extract_response_and_summary(raw_output)
+    
+    # ── CRITICAL: Apply formatting and length enforcement ─────
+    if actual_response:
+        # First enforce length and remove markdown
+        actual_response = enforce_response_length_and_format(actual_response, max_words=60)
+        # Then fix ALL spacing issues with ultra-aggressive fix
+        actual_response = fix_missing_spaces(actual_response)
 
     # ── Emergency fallback ────────────────────────────────────
     if not actual_response:
