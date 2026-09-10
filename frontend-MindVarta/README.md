@@ -1,4 +1,4 @@
-# MindTalk — Frontend
+# MindVarta — Frontend
 
 Student Mental Health Support · Voice Chatbot UI
 
@@ -7,7 +7,7 @@ Student Mental Health Support · Voice Chatbot UI
 ## Directory Structure
 
 ```
-frontend-MindTalk/
+frontend-MindVarta/
 ├── index.html                        # HTML entry point (loads fonts, mounts #root)
 ├── vite.config.js                    # Vite + React plugin config
 ├── package.json                      # Dependencies & scripts
@@ -79,7 +79,7 @@ npm run dev
 
 All colors are CSS custom properties defined in `global.css`.  
 Toggle dark/light via the ☀️/🌙 button in the navbar or sidebar.  
-Theme persists to `localStorage` under the key `mindtalk-theme`.
+Theme persists to `localStorage` under the key `MindVarta-theme`.
 
 ---
 

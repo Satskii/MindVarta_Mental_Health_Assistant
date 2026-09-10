@@ -13,18 +13,18 @@ export default function DocumentationPage() {
   }
 
   const tableOfContents = [
-    { id: 'overview',      title: 'Project Overview' },
-    { id: 'architecture',  title: 'System Architecture' },
-    { id: 'frontend',      title: 'Frontend Application' },
-    { id: 'backend',       title: 'Backend Application' },
-    { id: 'database',      title: 'Database Schema' },
-    { id: 'api',           title: 'API Endpoints' },
-    { id: 'auth',          title: 'Authentication & Security' },
-    { id: 'ai',            title: 'AI Module' },
-    { id: 'voice',         title: 'Voice Features (STT & TTS)' },
-    { id: 'setup',         title: 'Installation & Setup' },
-    { id: 'workflow',      title: 'Development Workflow' },
-    { id: 'deployment',    title: 'Deployment' },
+    { id: 'overview', title: 'Project Overview' },
+    { id: 'architecture', title: 'System Architecture' },
+    { id: 'frontend', title: 'Frontend Application' },
+    { id: 'backend', title: 'Backend Application' },
+    { id: 'database', title: 'Database Schema' },
+    { id: 'api', title: 'API Endpoints' },
+    { id: 'auth', title: 'Authentication & Security' },
+    { id: 'ai', title: 'AI Module' },
+    { id: 'voice', title: 'Voice Features (STT & TTS)' },
+    { id: 'setup', title: 'Installation & Setup' },
+    { id: 'workflow', title: 'Development Workflow' },
+    { id: 'deployment', title: 'Deployment' },
   ]
 
   const scrollToSection = (id) => {
@@ -83,7 +83,7 @@ export default function DocumentationPage() {
                   <FontAwesomeIcon icon={faRobot} />
                 </span>
                 <h4>AI-Powered</h4>
-                <p>Groq llama-3.1-8b-instant with cross-session memory summaries</p>
+                <p>Groq openai/gpt-oss-120b with cross-session memory summaries</p>
               </div>
               <div className="feature-item">
                 <span className="feature-icon">
@@ -173,7 +173,7 @@ export default function DocumentationPage() {
             <p>Built with React 19 and Vite. All API calls use <code>credentials: 'include'</code> for cookie-based auth.</p>
 
             <h3>Directory Structure</h3>
-            <pre className="code-block">{`frontend-MindTalk/
+            <pre className="code-block">{`frontend-MindVarta/
 ├── src/
 │   ├── components/
 │   │   ├── chat/
@@ -226,7 +226,7 @@ export default function DocumentationPage() {
             <p>FastAPI app with cookie-based auth, in-memory DB fallback, and startup env validation.</p>
 
             <h3>Directory Structure</h3>
-            <pre className="code-block">{`backend-MindTalk/
+            <pre className="code-block">{`backend-MindVarta/
 ├── app.py                        (all routes + lifespan)
 ├── requirements.txt
 ├── .env                          (never commit)
@@ -491,13 +491,13 @@ FRONTEND_URL=http://localhost:5173`}</pre>
             </ul>
 
             <h3>Backend Setup</h3>
-            <pre className="code-block">{`cd backend-MindTalk
+            <pre className="code-block">{`cd backend-MindVarta
 pip install -r requirements.txt
 cp .env.example .env        # fill in your credentials
 python app.py`}</pre>
 
             <h3>Frontend Setup</h3>
-            <pre className="code-block">{`cd frontend-MindTalk
+            <pre className="code-block">{`cd frontend-MindVarta
 npm install
 npm run dev`}</pre>
 
@@ -537,7 +537,7 @@ git push origin feature/feature-name
 
             {/* ──── FRONTEND DEPLOYMENT ──── */}
             <h3>Part 1: Frontend Deployment on Render</h3>
-            
+
             <h4>Step 1: Prepare Frontend for Production</h4>
             <pre className="code-block">{`# From frontend-MindVarta directory
 npm run build

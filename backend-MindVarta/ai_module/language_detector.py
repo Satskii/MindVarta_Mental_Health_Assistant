@@ -154,7 +154,7 @@ def detect_language(text: str) -> str:
         client = _get_client()
 
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             temperature=0,
             max_tokens=5,
             messages=[

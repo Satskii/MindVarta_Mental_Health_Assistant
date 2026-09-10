@@ -103,28 +103,87 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
 
 
 # ─────────────────────────────────────────────────────────────
-# FIX MISSING SPACES
+# FIX MISSING SPACES & WORD BOUNDARIES
 # ─────────────────────────────────────────────────────────────
+
+# Legitimate English compound words and words containing connector substrings.
+# These must NEVER be split by connector-splitting heuristics.
+LEGITIMATE_COMPOUNDS = {
+    "stranger", "together", "understand", "important", "somewhere", "anything",
+    "someone", "yourself", "already", "without", "another", "cannot", "sometimes",
+    "myself", "today", "tonight", "behind", "before", "because", "become",
+    "within", "meaning", "feelings", "breathing", "remember", "everyone",
+    "everything", "everywhere", "nobody", "nothing", "nowhere", "anybody",
+    "somebody", "anyway", "somewhat", "somehow", "meanwhile", "furthermore",
+    "moreover", "however", "whatever", "whenever", "wherever", "whoever",
+    "therefore", "otherwise", "throughout", "into", "onto", "upon", "towards",
+    "forward", "backward", "inward", "outward", "anywhere", "alongside",
+    "outside", "inside", "beside", "besides", "downstairs", "upstairs",
+    "forever", "nearby", "overall", "maybe", "always", "almost", "also",
+    "although", "counselor", "photo", "honor", "anxiety", "comfort", "support",
+    "distress", "struggle", "hopeless", "overwhelmed", "exhausted", "patient",
+    "caring", "listening", "talking", "sharing", "healing", "wellness",
+    "again", "pain", "train", "brain", "rain", "gain", "main", "remain",
+    "explain", "contain", "maintain", "certain", "mountain", "captain",
+    "bargain", "curtain", "person", "reason", "season", "lesson", "common",
+    "decision", "emotion", "action", "question", "situation", "great", "that",
+    "what", "chat", "boat", "coat", "threat", "repeat", "about", "above",
+    "across", "against", "among", "around", "behind", "below", "beneath",
+    "between", "beyond", "during", "except", "inside", "outside", "under",
+    "until", "upon", "within", "without"
+}
+
 
 def fix_missing_spaces(text: str) -> str:
     """
-    Aggressively fix spacing issues in AI-generated text.
+    Robustly repair tokenization and spacing defects in AI-generated text.
     Handles:
-    1. Words concatenated without spaces: "painfuland" → "painful and"
-    2. Broken words with spaces: "f or" → "for"
-    3. Missing spaces after punctuation: "it.Talking" → "it. Talking"
-    4. Broken contractions: "I m" → "I'm"
+    1. Greeting + Capitalized Name: "YesAnikesh" → "Yes, Anikesh"
+    2. Lowercase-to-Uppercase (CamelCase): "aboutI'm" → "about I'm", "todayIf" → "today If"
+    3. Em-dash and En-dash boundary spacing: "word—word" → "word — word"
+    4. Missing spaces after punctuation (. , ! ? ; : । ॥ ؟)
+    5. Contractions and pronoun attachments: "talkaboutI'm" → "talk about I'm"
+    6. Broken words with spaces: "f or" → "for", "counsel or" → "counselor"
+    7. Fused emotional runs: "sadnessangerconfusion" → "sadness anger confusion"
+    8. Safe multi-letter connector words while preserving legitimate compound words
     """
     if not text:
         return text
-    
-    # Step 1: Fix missing spaces after punctuation
-    text = re.sub(r'([.!?,;:])([A-Z])', r'\1 \2', text)  # Add space after punctuation before capital letter
-    text = re.sub(r'([.!?,;:])([a-z])', r'\1 \2', text)  # Add space after punctuation before lowercase
-    text = re.sub(r'—([A-Za-z])', r'— \1', text)  # Add space after em dash
-    text = re.sub(r'-([A-Za-z])', r'- \1', text)  # Add space after hyphen (when used as separator)
-    
-    # Step 2: Fix words that have incorrect spaces in the middle (broken words)
+
+    # Step 1: Fix em-dash and en-dash collisions
+    # e.g., "YesAnikesh— I" -> "YesAnikesh — I", "remember—your" -> "remember — your"
+    text = re.sub(r'([A-Za-z0-9,!?])([—–])', r'\1 \2', text)
+    text = re.sub(r'([—–])([A-Za-z0-9])', r'\1 \2', text)
+
+    # Step 2: Greeting + Capitalized Name (direct address)
+    # "YesAnikesh" -> "Yes, Anikesh", "Yes Anikesh" -> "Yes, Anikesh", "HiAnikesh" -> "Hi, Anikesh"
+    text = re.sub(r'\b(Yes|No|Sure|Hey|Hi|Hello)(?:\s*,?\s*|\s*)([A-Z][a-z]+)\b', r'\1, \2', text)
+
+    # Step 3: CamelCase / lowercase letter followed immediately by uppercase letter
+    # e.g. "aboutI'm" -> "about I'm", "aboutI" -> "about I", "todayIf" -> "today If"
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+    # Step 4: Fix missing spaces after punctuation across languages
+    # English (.!?,;:), Hindi/Bengali danda (।॥), Arabic (؟)
+    text = re.sub(r'([.!?,;:।॥؟])([A-Za-z0-9\u0900-\u097F\u0980-\u09FF])', r'\1 \2', text)
+
+    # Step 5: Contractions glued to preceding words
+    pronoun_contractions = (
+        r"I['’]m|I['’]d|I['’]ll|I['’]ve|"
+        r"you['’]re|you['’]ll|you['’]ve|you['’]d|"
+        r"they['’]re|they['’]ll|they['’]ve|they['’]d|"
+        r"we['’]re|we['’]ll|we['’]ve|we['’]d|"
+        r"he['’]s|he['’]ll|he['’]d|"
+        r"she['’]s|she['’]ll|she['’]d|"
+        r"it['’]s|it['’]ll|"
+        r"that['’]s|there['’]s|what['’]s|who['’]s|"
+        r"can['’]t|won['’]t|don['’]t|doesn['’]t|didn['’]t|"
+        r"hasn['’]t|haven['’]t|hadn['’]t|isn['’]t|aren['’]t|"
+        r"wasn['’]t|weren['’]t|couldn['’]t|wouldn['’]t|shouldn['’]t"
+    )
+    text = re.sub(rf'([a-zA-Z]{{2,}})({pronoun_contractions})\b', r'\1 \2', text, flags=re.IGNORECASE)
+
+    # Step 6: Fix words that have incorrect spaces inside (broken words)
     broken_words = {
         r'\bf or\b': 'for',
         r'\bt o\b': 'to',
@@ -170,14 +229,16 @@ def fix_missing_spaces(text: str) -> str:
         r'\bi t\b': 'it',
         r'\bw e\b': 'we',
         r'\bo ur\b': 'our',
-        r'\bse\b': 'these',  # Common typo: "se feelings" → "these feelings"
+        r'\bse\b': 'these',
         r'\bth e\b': 'the',
+        r'\bcounsel or\b': 'counselor',
+        r'\bpho to\b': 'photo',
+        r'\bhon or\b': 'honor',
     }
-    
     for pattern, replacement in broken_words.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
-    
-    # Step 3: Fix contractions that are missing apostrophes
+
+    # Step 7: Fix contractions that are missing apostrophes
     contractions = {
         r'\bIm\b': "I'm",
         r'\bId\b': "I'd",
@@ -224,46 +285,10 @@ def fix_missing_spaces(text: str) -> str:
         r'\bwouldnt\b': "wouldn't",
         r'\bshouldnt\b': "shouldn't",
     }
-    
     for pattern, replacement in contractions.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
-    
-    # Step 4: AGGRESSIVE - Fix concatenated words (most common issue)
-    # Pattern: word ending + word beginning (e.g., "painfuland" → "painful and")
-    common_word_boundaries = [
-        # Common words that get concatenated
-        (r'painful(and|or|but|so|if|that|which|when|where)', r'painful \1'),
-        (r'sad(and|or|but|so|if|that|which|when|where)', r'sad \1'),
-        (r'shock(and|or|but|so|if|that|which|when|where)', r'shock \1'),
-        (r'confusion(and|or|but|so|if|that|which|when|where)', r'confusion \1'),
-        (r'sadness(and|or|but|so|if|that|which|when|where)', r'sadness \1'),
-        (r'anger(and|or|but|so|if|that|which|when|where)', r'anger \1'),
-        (r'numbness(and|or|but|so|if|that|which|when|where)', r'numbness \1'),
-        (r'memories(and|or|but|so|if|that|which|when|expressing|sharing)', r'memories \1'),
-        (r'expressing(and|or|but|so|your|my|their)', r'expressing \1'),
-        (r'counsel or\b', 'counselor'),  # Fix specific typo
-        (r'pho to\b', 'photo'),  # Fix specific typo
-        (r'hon or\b', 'honor'),  # Fix specific typo
-        
-        # Common endings that get joined to next word
-        (r'(it|them|him|her|me|you|us)(how|what|where|when|why|who)', r'\1 \2'),
-        (r'(can|will|should|could|would|may|might)(help|be|have|make)', r'\1 \2'),
-        (r'(and|or|but)(I|you|he|she|it|they|we)', r'\1 \2'),
-        (r'(the|a|an)(se|these|those|this|that)', r'\1 \2'),
-        
-        # Common prefixes that get joined
-        (r'(un|re|pre|dis|mis|over|under)(able|willing|expected|appropriate)', r'\1\2'),
-    ]
-    
-    for pattern, replacement in common_word_boundaries:
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
 
-    # Repair runs of common emotional-support words that a model occasionally
-    # emits as a single token sequence, e.g.
-    # ``sadnessangerconfusionguilteven``.  Match only a run of *two or more*
-    # complete known words, so ordinary words such as "stranger" are untouched.
-    # This is deliberately conservative: guessing arbitrary English word breaks
-    # is more likely to corrupt a valid response than to improve it.
+    # Step 8: Multi-word fused emotional terms (e.g., "sadnessangerconfusionguilteven")
     fused_terms = (
         "sadness|anger|confusion|guilt|relief|numbness|grief|shock|fear|"
         "anxiety|stress|frustration|loneliness|helplessness|regret|remorse|"
@@ -276,46 +301,51 @@ def fix_missing_spaces(text: str) -> str:
         return " ".join(part.group(0) for part in fused_term.finditer(match.group(0)))
 
     text = fused_run.sub(split_fused_run, text)
-    
-    # Step 5: Generic pattern - find likely concatenated words.  This is kept
-    # for common connector mistakes; the semantic run repair above handles the
-    # longer chains that this heuristic cannot recognize.
-    common_starters = ['and', 'or', 'but', 'so', 'if', 'that', 'which', 'when', 'where', 'who', 'how', 'what', 
-                       'the', 'a', 'an', 'to', 'for', 'with', 'from', 'about', 'after', 'before']
-    
-    for starter in common_starters:
-        # Match word ending + starter (e.g., "painfuland" → "painful and")
-        pattern = r'([a-z]{3,})(' + starter + r')\b'
-        text = re.sub(pattern, r'\1 \2', text, flags=re.IGNORECASE)
-    
-    # Step 6: Fix specific common concatenations from the error log
+
+    # Step 9: Safe multi-letter connector words separation
+    # (Avoid 1-2 letter suffixes like in/on/at/as/or which form natural word endings)
+    safe_connectors = [
+        'and', 'but', 'because', 'although', 'about', 'with', 'from', 'before', 'after',
+        'when', 'where', 'which', 'that'
+    ]
+    for conn in safe_connectors:
+        def split_conn(m: re.Match) -> str:
+            full = (m.group(1) + m.group(2)).lower()
+            if full in LEGITIMATE_COMPOUNDS:
+                return m.group(0)
+            if len(m.group(1)) < 3:
+                return m.group(0)
+            return f"{m.group(1)} {m.group(2)}"
+
+        pattern = rf'\b([a-zA-Z]{{3,}})({conn})\b'
+        text = re.sub(pattern, split_conn, text, flags=re.IGNORECASE)
+
+    # Step 10: Known common pairs from historical logs
     specific_fixes = {
         'painfuland': 'painful and',
         'sadnessshock': 'sadness shock',
         'sadnessshockconfusion': 'sadness shock confusion',
         'shockconfusion': 'shock confusion',
-        'sadness shock confusion': 'sadness, shock, confusion',  # Add commas for list
+        'sadness shock confusion': 'sadness, shock, confusion',
         'overwhelmedsad': 'overwhelmed, sad',
         'sadconfused': 'sad, confused',
         'overwhelmedsadconfused': 'overwhelmed, sad, confused',
-        'counsel or': 'counselor',
-        'pho to': 'photo',
-        'hon or': 'honor',
         'se feelings': 'these feelings',
         'memoriesexpressing': 'memories, expressing',
         'itsharing': 'it, sharing',
-        'itha': 'it ha',
         'friendclose': 'friend, close',
         'memberclose': 'member, close',
     }
-    
     for wrong, correct in specific_fixes.items():
         text = text.replace(wrong, correct)
-    
-    # Step 7: Clean up multiple spaces
-    text = re.sub(r'\s+', ' ', text)
-    
+
+    # Step 11: Clean up spacing around punctuation and multiple spaces
+    text = re.sub(r'\s+([,.:;!?])', r'\1', text)  # Remove space before punctuation
+    text = re.sub(r'[ \t]+', ' ', text)           # Collapse multiple spaces
+    text = re.sub(r' ?\n ?', '\n', text)          # Clean around newlines
+
     return text.strip()
+
 
 
 def enforce_response_length_and_format(text: str, max_words: int = 60) -> str:
@@ -325,6 +355,26 @@ def enforce_response_length_and_format(text: str, max_words: int = 60) -> str:
     """
     if not text:
         return text
+
+    # Some provider responses ignore the JSON-only instruction and prefix the
+    # actual reply with a field label. Never expose that transport artifact.
+    text = re.sub(r'^\s*response\s*[:\-]?\s+', '', text, count=1, flags=re.IGNORECASE)
+    text = re.sub(
+        r'\bfollow[\s_-]*up[\s_-]*question\s*[:\-]?\s*',
+        '',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # A malformed response can repeat the same follow-up after its label.
+    # Keep the first question instead of showing it twice to the user.
+    text = re.sub(
+        r'(?P<question>[^.!?]{5,}\?)\s+(?P=question)',
+        r'\g<question>',
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    )
     
     # Step 1: Remove ALL markdown and formatting
     text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # Remove **bold**
@@ -556,6 +606,8 @@ def extract_response_and_summary(raw_text: str) -> tuple:
 
     # Fix ALL spacing issues before returning
     actual_response = fix_missing_spaces(actual_response)
+    if summarize_context:
+        summarize_context = fix_missing_spaces(summarize_context)
     return actual_response, summarize_context
 
 
@@ -872,7 +924,9 @@ def generate_response(
     # Special handling for openai/gpt-oss-120b model which requires reasoning_effort parameter
     extra_params = {}
     if AI_MODEL == "openai/gpt-oss-120b":
-        extra_params["reasoning_effort"] = "medium"  # Use "low" for faster, shorter responses
+        # This endpoint is constrained to short replies. Medium reasoning can
+        # consume the whole completion budget before the JSON is finished.
+        extra_params["reasoning_effort"] = "low"
     
     completion = client.chat.completions.create(
         model=AI_MODEL,
@@ -921,6 +975,8 @@ def generate_response(
         actual_response = enforce_response_length_and_format(actual_response, max_words=60)
         # Then fix ALL spacing issues with ultra-aggressive fix
         actual_response = fix_missing_spaces(actual_response)
+    if summarize_context:
+        summarize_context = fix_missing_spaces(summarize_context)
 
     # ── Emergency fallback ────────────────────────────────────
     if not actual_response:

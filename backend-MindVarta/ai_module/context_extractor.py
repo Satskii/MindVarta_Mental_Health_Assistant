@@ -92,7 +92,7 @@ def extract_detailed_context(conversation_history: list, language: str = "englis
     
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             messages=[
                 {
                     "role": "system",

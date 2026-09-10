@@ -4,12 +4,12 @@ const ThemeContext = createContext()
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('mindtalk-theme') || 'dark'
+    return localStorage.getItem('MindVarta-theme') || 'dark'
   })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('mindtalk-theme', theme)
+    localStorage.setItem('MindVarta-theme', theme)
   }, [theme])
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')

@@ -99,11 +99,77 @@ class MemoryRetrievalTests(unittest.TestCase):
         self.assertIn("sadness anger confusion guilt even moments", repaired)
         self.assertEqual(generator.fix_missing_spaces("A stranger listened."), "A stranger listened.")
 
+    def test_user_reported_spacing_issue_is_fully_repaired(self):
+        generator = load_response_generator()
+        reported_text = (
+            "YesAnikesh— I remember your name. How are you feeling today? "
+            "If there’s anything on your mind or something you’d like to talk aboutI’m here to listen."
+        )
+        repaired = generator.fix_missing_spaces(reported_text)
+        self.assertIn("Yes, Anikesh", repaired)
+        self.assertIn("talk about I’m", repaired)
+        self.assertIn("— I remember", repaired)
+        self.assertNotIn("YesAnikesh", repaired)
+        self.assertNotIn("aboutI’m", repaired)
+
+    def test_compound_words_are_preserved(self):
+        generator = load_response_generator()
+        compounds = [
+            "A stranger listened.",
+            "We can work together.",
+            "I understand how you feel.",
+            "Maybe we can try again.",
+            "This is important.",
+            "Take care of yourself.",
+            "Sometimes it feels hard.",
+            "I am talking to myself today.",
+        ]
+        for sentence in compounds:
+            self.assertEqual(generator.fix_missing_spaces(sentence), sentence)
+
+    def test_em_dash_and_indic_punctuation_spacing(self):
+        generator = load_response_generator()
+        self.assertEqual(
+            generator.fix_missing_spaces("YesI remember—your name"),
+            "Yes I remember — your name"
+        )
+        self.assertEqual(
+            generator.fix_missing_spaces("আমি আছি।কী হয়েছে বল?"),
+            "আমি আছি। কী হয়েছে বল?"
+        )
+
+
     def test_complete_reply_check_uses_visible_text_not_json_wrapper(self):
         generator = load_response_generator()
 
         self.assertFalse(generator.looks_incomplete("I'm here with you. What feels hardest right now?"))
         self.assertTrue(generator.looks_incomplete("I'm here with you, and I want to"))
+
+    def test_provider_response_label_is_removed(self):
+        generator = load_response_generator()
+
+        cleaned = generator.enforce_response_length_and_format(
+            "response I understand how stressful this feels. What would help most right now?"
+        )
+
+        self.assertEqual(
+            cleaned,
+            "I understand how stressful this feels. What would help most right now?"
+        )
+
+    def test_repeated_follow_up_question_is_removed(self):
+        generator = load_response_generator()
+
+        cleaned = generator.enforce_response_length_and_format(
+            "Try short walks and consistent sleep. How many minutes can you dedicate "
+            "to a walk each day? followupquestion How many minutes can you dedicate "
+            "to a walk each day?"
+        )
+
+        self.assertEqual(
+            cleaned,
+            "Try short walks and consistent sleep. How many minutes can you dedicate to a walk each day?"
+        )
 
     def test_short_fallback_is_complete_and_invites_a_follow_up(self):
         generator = load_response_generator()

@@ -1,12 +1,12 @@
-# MindTalk Backend
+# MindVarta Backend
 
-FastAPI-based backend for the MindTalk mental health chat application.
-Powered by Groq API for LLM (Llama 3.1 8B) and STT (Whisper), gTTS for text-to-speech, and PostgreSQL (Aiven) for persistent storage.
+FastAPI-based backend for the MindVarta mental health chat application.
+Powered by Groq API for LLM (openai/gpt-oss-120b)and STT (Whisper), gTTS for text-to-speech, and PostgreSQL (Aiven) for persistent storage.
 
 ## Tech Stack
 
 - Python + FastAPI + Uvicorn
-- Groq API — `llama-3.1-8b-instant` (chat) + `whisper-large-v3-turbo` (STT)
+- Groq API — `openai/gpt-oss-120b` (chat) + `whisper-large-v3-turbo` (STT)
 - gTTS — text-to-speech (English, Hindi, Bengali)
 - PostgreSQL (Aiven) — persistent session and chat history storage
 - psycopg2 — PostgreSQL driver with connection pooling
@@ -15,7 +15,7 @@ Powered by Groq API for LLM (Llama 3.1 8B) and STT (Whisper), gTTS for text-to-s
 ## Project Structure
 
 ```
-backend-MindTalk/
+backend-MindVarta/
 ├── app.py                              # FastAPI app — all routes + lifespan
 ├── requirements.txt
 ├── .env                                # API keys + DB credentials (never commit)
