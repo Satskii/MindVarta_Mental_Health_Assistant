@@ -383,15 +383,22 @@ async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)
 
     history = db.get_recent_history(conv_id)
 
-    # Build memory: current conversation memory + summaries from previous sessions
-    memory = conv["memory"]
-    if not memory:
-        prior_context = db.get_user_context_summary(current_user["id"], exclude_conv_id=conv_id)
-        if prior_context:
-            memory = prior_context
-            print(f"[INFO] Loaded prior context ({len(memory)} chars) for user {current_user['id']}")
-        else:
-            print(f"[INFO] No prior context for user {current_user['id']} (first conversation)")
+    # Build memory on *every* turn.  Previously prior-session context was only
+    # loaded while this conversation's memory was blank.  The first generated
+    # summary then replaced it, so later turns could no longer recall facts from
+    # other sessions.
+    current_memory = (conv["memory"] or "").strip()
+    prior_context = db.get_user_context_summary(current_user["id"], exclude_conv_id=conv_id)
+    memory_parts = []
+    if current_memory:
+        memory_parts.append(f"Current conversation:\n{current_memory}")
+    if prior_context:
+        memory_parts.append(f"Earlier conversations:\n{prior_context}")
+    memory = "\n\n".join(memory_parts)
+    if memory:
+        print(f"[INFO] Loaded {len(memory_parts)} memory source(s) ({len(memory)} chars) for user {current_user['id']}")
+    else:
+        print(f"[INFO] No saved memory for user {current_user['id']} (first conversation)")
 
     try:
         result = generate_response(
@@ -407,7 +414,13 @@ async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=500, detail="Failed to get a response. Please try again.")
 
     bot_reply = result["actual_response"]
-    new_summary = result.get("summarize_context", "").strip() or conv["memory"]
+    # Store a usable fallback that includes the user's words.  Falling back to
+    # the assistant reply loses the personal fact that future questions need.
+    new_summary = result.get("summarize_context", "").strip()
+    if not new_summary:
+        prior_for_fallback = current_memory[:800]
+        new_fact = f"User said: {user_input}"
+        new_summary = " ".join(part for part in (prior_for_fallback, new_fact) if part)
     new_count = conv["count"] + 1
     crisis_detected = result.get("crisis_detected", False)
     crisis_level = result.get("crisis_level", "none")

@@ -247,7 +247,13 @@ SPECIAL RULES:
     * If user wrote Bengali (even in Roman letters like "ami khub kharap achi"), reply in Bengali script
     * If user wrote Hindi (even in Roman letters like "mujhe bura lag raha hai"), reply in Hindi script
     * If user wrote English, reply in English
-  - summarize_context → ALWAYS in English, factual, 1-2 sentences max
+  - summarize_context → ALWAYS in English. Write an updated, factual running
+    memory (1-3 compact sentences): preserve relevant facts from the Memory
+    section and add newly stated user facts. Never summarize only your reply.
+    Do not invent details and do not include advice unless the user reacted to it.
+  - Put a normal space between EVERY English word. Never concatenate a list of
+    words (for example, write "sadness, anger, confusion" — never
+    "sadnessangerconfusion").
   - DO NOT use double backslashes or escape sequences
   - If your response contains quotes, escape them as \" ONLY where needed in JSON
   - Use real newlines inside the JSON string, not \\n

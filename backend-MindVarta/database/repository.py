@@ -288,19 +288,25 @@ def save_summary(conv_id: str, summary: str):
 
 def get_user_context_summary(user_id: str, exclude_conv_id: str = None) -> str:
     """
-    Returns a combined summary from the user's last 3 conversations
-    (excluding the current one) to give the LLM cross-session context.
+    Return the latest *rolling memory* for each of the user's recent previous
+    conversations.  ``conversation_summaries`` is an audit trail (one row is
+    written per reply), so querying its latest three rows can return three
+    versions of the same conversation and omit every other session.
+
+    The ``conversations.memory`` column is the canonical latest summary for a
+    conversation.  Reading it here gives cross-session retrieval one useful
+    context block per conversation.
     """
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT cs.summary
-                   FROM conversation_summaries cs
-                   JOIN conversations c ON cs.conversation_id = c.conv_id
+                """SELECT c.memory
+                   FROM conversations c
                    WHERE c.user_id = %s
+                     AND c.memory <> ''
                      AND (%s IS NULL OR c.conv_id != %s)
-                   ORDER BY cs.generated_at DESC
+                   ORDER BY c.updated_at DESC
                    LIMIT 3""",
                 (user_id, exclude_conv_id, exclude_conv_id)
             )

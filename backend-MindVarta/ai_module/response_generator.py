@@ -18,7 +18,10 @@ prompt_manager = PromptManagerV3()
 MAX_PROMPT_TOKENS = 2000
 MAX_RESPONSE_TOKENS = 250  # Aggressively reduced to ensure complete responses with proper spacing
 MAX_HISTORY_MESSAGES = 3  # Reduced to save token budget for response
-MAX_MEMORY_CHARS = 250
+# A rolling summary has to contain more than a single short sentence to retain
+# details such as names, relationships, and ongoing stressors.  Prompt trimming
+# below still protects the provider token budget when needed.
+MAX_MEMORY_CHARS = 1200
 
 
 def estimate_text_tokens(text: str) -> int:
@@ -40,11 +43,11 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
     def over_budget(items):
         return estimate_prompt_tokens(items) > max_tokens
 
-    # Drop memory/context system blocks first, since they are the easiest to cut.
-    for idx, msg in enumerate(trimmed):
-        if msg.get("role") == "system" and "What you already know about this person" in msg.get("content", ""):
-            trimmed[idx]["content"] = ""
-            break
+    # Keep memory whenever the prompt already fits.  The previous implementation
+    # cleared this block unconditionally, which meant stored memories never made
+    # it to the model at all.
+    if not over_budget(trimmed):
+        return trimmed
 
     # Keep only the newest conversation turns.
     while over_budget(trimmed) and len(trimmed) > 4:
@@ -54,6 +57,19 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
                 break
         else:
             break
+
+    # If needed, shorten memory before discarding it.  It is more valuable than
+    # older verbatim turns for recalling facts from earlier sessions.
+    for msg in trimmed:
+        if not over_budget(trimmed):
+            break
+        if msg.get("role") == "system" and "What you already know about this person" in msg.get("content", ""):
+            prefix = "What you already know about this person:\n"
+            suffix = "\n\nUse this naturally. Do not ask them to repeat what they already shared."
+            remembered = msg["content"]
+            if remembered.startswith(prefix) and remembered.endswith(suffix):
+                remembered = remembered[len(prefix):-len(suffix)].strip()
+                msg["content"] = prefix + remembered[:600] + suffix
 
     # Shrink long content aggressively.
     previous_tokens = estimate_prompt_tokens(trimmed)
@@ -68,6 +84,14 @@ def trim_prompt_for_budget(messages: list, max_tokens: int = MAX_PROMPT_TOKENS) 
                 break
         if estimate_prompt_tokens(trimmed) >= previous_tokens:
             break
+
+    # Only remove the memory block as a final targeted fallback.  Do this before
+    # stripping all system guidance, and only when the prompt remains oversized.
+    if over_budget(trimmed):
+        for msg in trimmed:
+            if msg.get("role") == "system" and "What you already know about this person" in msg.get("content", ""):
+                msg["content"] = ""
+                break
 
     # As a last resort, strip all non-essential system text and keep only the user question.
     if over_budget(trimmed):
@@ -233,9 +257,29 @@ def fix_missing_spaces(text: str) -> str:
     
     for pattern, replacement in common_word_boundaries:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Repair runs of common emotional-support words that a model occasionally
+    # emits as a single token sequence, e.g.
+    # ``sadnessangerconfusionguilteven``.  Match only a run of *two or more*
+    # complete known words, so ordinary words such as "stranger" are untouched.
+    # This is deliberately conservative: guessing arbitrary English word breaks
+    # is more likely to corrupt a valid response than to improve it.
+    fused_terms = (
+        "sadness|anger|confusion|guilt|relief|numbness|grief|shock|fear|"
+        "anxiety|stress|frustration|loneliness|helplessness|regret|remorse|"
+        "emotions|feelings|moments|thoughts|memories|pain|hurt|loss|even|sometimes"
+    )
+    fused_run = re.compile(rf"\b(?:(?:{fused_terms})){{2,}}\b", re.IGNORECASE)
+    fused_term = re.compile(fused_terms, re.IGNORECASE)
+
+    def split_fused_run(match: re.Match) -> str:
+        return " ".join(part.group(0) for part in fused_term.finditer(match.group(0)))
+
+    text = fused_run.sub(split_fused_run, text)
     
-    # Step 5: Generic pattern - find likely concatenated words
-    # Look for lowercase letter followed immediately by common word starters
+    # Step 5: Generic pattern - find likely concatenated words.  This is kept
+    # for common connector mistakes; the semantic run repair above handles the
+    # longer chains that this heuristic cannot recognize.
     common_starters = ['and', 'or', 'but', 'so', 'if', 'that', 'which', 'when', 'where', 'who', 'how', 'what', 
                        'the', 'a', 'an', 'to', 'for', 'with', 'from', 'about', 'after', 'before']
     
@@ -534,22 +578,23 @@ def generate_fallback_summary(response_text: str) -> str:
 
 
 def looks_incomplete(text: str) -> bool:
-    """Heuristics for partially generated or cut-off replies, supporting multiple languages."""
+    """Heuristics for a user-visible reply, supporting multiple languages.
+
+    Call this only after extracting ``actual_response`` from the JSON payload.
+    A valid JSON response ends in ``}``, which is not a sentence ending and must
+    not be mistaken for a cut-off reply.
+    """
     text = (text or "").strip()
     if not text:
         return False
-
-    # JSON-style output that ends without a balanced object is usually incomplete.
-    if '"actual_response"' in text and text.count('{') != text.count('}'):
-        return True
 
     # Detect text that ends without proper sentence-ending markers.
     # Works across languages: English (. ! ?), Hindi/Bengali (।), Arabic (؟), Chinese (。)
     sentence_endings = r'[.!?।؟。\u0964\u0965]'
     natural_ending = re.search(sentence_endings + r'["\')\]]*\s*$', text)
     
-    # If response is long but doesn't end with punctuation, likely cut off.
-    if len(text) > 100 and not natural_ending:
+    # A substantive visible reply without sentence punctuation is likely cut off.
+    if len(text) > 30 and not natural_ending:
         return True
 
     # If text ends with ellipsis but seems to continue further (common truncation)
@@ -565,6 +610,41 @@ def looks_incomplete(text: str) -> bool:
             return True
 
     return False
+
+
+def get_complete_fallback(language: str) -> str:
+    """Return a short, complete prompt that naturally keeps the chat going."""
+    normalized = (language or "english").lower()
+    if normalized in {"hindi", "hi"}:
+        return "मैं यहाँ हूँ। अभी आपके मन में सबसे ज़्यादा क्या चल रहा है?"
+    if normalized in {"bengali", "bn"}:
+        return "আমি আছি। এই মুহূর্তে তোমার মনে সবচেয়ে বেশি কী চলছে?"
+    return "I'm here with you. What feels most important right now?"
+
+
+def regenerate_complete_response(client, messages: list, extra_params: dict) -> tuple[str, str]:
+    """Request one fresh, short JSON answer when a generation was truncated."""
+    retry_messages = list(messages) + [{
+        "role": "system",
+        "content": (
+            "Give a fresh replacement answer now. It must be complete, natural, "
+            "and under 35 words. Ask at most one gentle follow-up question. "
+            "Return the required JSON only; do not continue or repeat a partial answer."
+        ),
+    }]
+    try:
+        completion = client.chat.completions.create(
+            model=AI_MODEL,
+            messages=retry_messages,
+            temperature=0.4,
+            max_tokens=MAX_RESPONSE_TOKENS,
+            **extra_params,
+        )
+        choice = completion.choices[0]
+        return (choice.message.content or "").strip(), getattr(choice, "finish_reason", "") or ""
+    except Exception as exc:
+        print(f"[WARN] Short-response regeneration failed: {exc}")
+        return "", ""
 
 
 def continue_partial_response(client, messages: list, partial_text: str, max_tokens: int = 220) -> str:
@@ -802,22 +882,38 @@ def generate_response(
         **extra_params
     )
 
-    raw_output = completion.choices[0].message.content.strip()
+    choice = completion.choices[0]
+    raw_output = (choice.message.content or "").strip()
+    finish_reason = getattr(choice, "finish_reason", "") or ""
 
-    # If the reply looks cut off, ask the model to continue from the last sentence.
-    if looks_incomplete(raw_output):
-        print(f"[CONTINUATION] Response looks incomplete ({len(raw_output)} chars). Asking model to continue...")
-        continuation = continue_partial_response(client, messages, raw_output)
-        if continuation:
-            print(f"[CONTINUATION] Got {len(continuation)} chars of continuation. Stitching together...")
-            raw_output = f"{raw_output} {continuation}".strip()
-        else:
-            print(f"[CONTINUATION] No continuation returned, using partial response.")
-    else:
-        print(f"[RESPONSE] Complete response ({len(raw_output)} chars) received.")
+    # ``finish_reason == length`` is the provider's authoritative truncation
+    # signal. Regenerate a concise, complete JSON response instead of trying to
+    # concatenate a continuation onto a partial JSON object.
+    if finish_reason == "length":
+        print("[RESPONSE] Provider truncated the response; regenerating a concise replacement.")
+        raw_output, finish_reason = regenerate_complete_response(client, messages, extra_params)
+        if not raw_output or finish_reason == "length":
+            fallback = get_complete_fallback(language)
+            return {
+                "actual_response": fallback,
+                "summarize_context": f"User said: {user_input[:200]}",
+                "crisis_detected": possible_crisis,
+                "crisis_level": crisis_level,
+            }
 
     # ── Extract response ──────────────────────────────────────
     actual_response, summarize_context = extract_response_and_summary(raw_output)
+
+    # JSON can be malformed even when the provider did not flag a length limit.
+    # Validate the extracted, user-visible response—not the raw JSON wrapper.
+    if looks_incomplete(actual_response):
+        print("[RESPONSE] Parsed reply appears incomplete; regenerating a concise replacement.")
+        retry_output, retry_finish_reason = regenerate_complete_response(client, messages, extra_params)
+        if retry_output and retry_finish_reason != "length":
+            actual_response, summarize_context = extract_response_and_summary(retry_output)
+        if looks_incomplete(actual_response):
+            actual_response = get_complete_fallback(language)
+            summarize_context = summarize_context or f"User said: {user_input[:200]}"
     
     # ── CRITICAL: Apply formatting and length enforcement ─────
     if actual_response:
